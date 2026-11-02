@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site Kit — build a website from parts of other sites</title>
+<style>
+  :root {
+    --bg:#f4f2ee; --panel:#fbfaf8; --card:#fff; --ink:#1d1c1a; --mut:#76716a; --line:#e3dfd7;
+    --acc:#3b5bfd; --acc-ink:#fff; --acc-soft:#e8ecff; --ok:#17803d; --warn:#b45309; --warn-soft:#fff4e0; --radius:10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161513; --panel:#1d1c1a; --card:#242321; --ink:#f1eee8; --mut:#a09a90; --line:#35332f; --acc:#7b93ff; --acc-ink:#0d1030; --acc-soft:#272c4f; --warn-soft:#3a2c14; --warn:#f0b35a; --ok:#58c47d; }
+  }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  html,body { height:100%; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); display:flex; flex-direction:column; }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
+
+  header.top { display:flex; align-items:center; gap:16px; padding:10px 18px; background:var(--panel); border-bottom:1px solid var(--line); }
+  .brand { font-weight:700; font-size:16px; letter-spacing:-.01em; }
+  .brand small { font-weight:400; color:var(--mut); margin-left:8px; font-size:13px; }
+  .steps { display:flex; gap:6px; margin-left:auto; color:var(--mut); font-size:13px; }
+  .steps span { padding:3px 10px; border-radius:99px; background:var(--bg); }
+  .steps span b { color:var(--ink); margin-right:4px; }
+  .btn { border:1px solid var(--line); background:var(--card); padding:7px 12px; border-radius:8px; }
+  .btn:hover { border-color:var(--mut); }
+  .btn.primary { background:var(--acc); color:var(--acc-ink); border-color:var(--acc); font-weight:600; }
+  .btn.primary:disabled { opacity:.45; cursor:not-allowed; }
+  .btn.small { padding:3px 9px; font-size:12px; }
+  .btn.ghost { background:transparent; }
+
+  main { flex:1; min-height:0; display:grid; grid-template-columns:350px minmax(0,1fr) 310px; }
+  .col { min-height:0; display:flex; flex-direction:column; background:var(--panel); }
+  .col.left { border-right:1px solid var(--line); display:block; overflow-y:auto; }
+  .pbar { position:sticky; top:0; z-index:3; background:var(--panel); padding-bottom:8px; border-bottom:1px solid var(--line); margin-bottom:8px; }
+  .prow { display:flex; gap:6px; padding:0 12px; }
+  .prow .search { margin:0; flex:1; min-width:0; width:auto; }
+  .prow select { max-width:140px; padding:6px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); }
+  #parts { padding:0 12px 14px; }
+  .drop.compact { padding:8px 10px; display:flex; align-items:center; gap:10px; justify-content:space-between; text-align:left; }
+  .drop.compact p { display:none; } .drop.compact strong { margin:0; font-size:13px; }
+  .col.right { border-left:1px solid var(--line); }
+  .col h2 { margin:0; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); padding:14px 16px 8px; }
+  .scroll { overflow:auto; min-height:0; flex:1; padding:0 12px 14px; }
+
+  /* drop zone */
+  .drop { margin:0 12px 10px; border:2px dashed var(--line); border-radius:var(--radius); padding:16px; text-align:center; background:var(--card); transition:.15s; }
+  .drop.over { border-color:var(--acc); background:var(--acc-soft); }
+  .drop strong { display:block; font-size:14px; }
+  .drop p { margin:4px 0 10px; color:var(--mut); font-size:12.5px; }
+  details.paste { margin:0 12px 10px; font-size:12.5px; color:var(--mut); }
+  details.paste textarea { width:100%; height:80px; margin-top:6px; font:11px ui-monospace,monospace; background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:6px; }
+
+  .sites { margin:0 12px 8px; display:grid; gap:6px; }
+  .site { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 10px; display:grid; gap:4px; }
+  .site .name { font-weight:600; display:flex; gap:8px; align-items:center; }
+  .site .name span.sw { width:10px; height:10px; border-radius:3px; flex:none; }
+  .site .meta { color:var(--mut); font-size:12px; display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center; }
+  .site .x { margin-left:auto; border:0; background:none; color:var(--mut); font-size:16px; line-height:1; padding:0 2px; }
+  .badge { font-size:11px; padding:1px 7px; border-radius:99px; background:var(--bg); color:var(--mut); }
+  .badge.moves { background:var(--acc-soft); color:var(--acc); }
+
+  .filters { display:flex; flex-wrap:wrap; gap:5px; padding:0 12px 8px; }
+  .chip { border:1px solid var(--line); background:var(--card); border-radius:99px; padding:2px 9px; font-size:12px; }
+  .chip[aria-pressed="true"] { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .search { margin:0 12px 8px; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); width:calc(100% - 24px); }
+
+  .part { background:var(--card); border:1px solid var(--line); border-radius:8px; margin-bottom:7px; display:grid; grid-template-columns:6px 1fr; overflow:hidden; }
+  .part .bar { background:var(--rc,#999); }
+  .part .body { padding:8px 10px; display:grid; gap:4px; min-width:0; }
+  .part .row1 { display:flex; align-items:center; gap:6px; }
+  .part .label { font-weight:600; }
+  .part .site-tag { font-size:11px; color:var(--mut); margin-left:auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px; }
+  .part .snip { color:var(--mut); font-size:12px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word; }
+  .part .row3 { display:flex; gap:6px; align-items:center; }
+  .part .unsure { color:var(--warn); font-size:11px; }
+  .part select { font-size:11px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--mut); padding:1px 2px; max-width:105px; }
+  .part .grow { flex:1; }
+  .thumb { position:relative; overflow:hidden; border:1px solid var(--line); border-radius:6px; background:var(--bg); cursor:zoom-in; }
+  .thumb iframe { position:absolute; left:0; top:0; width:1440px; border:0; background:#fff; transform-origin:0 0; pointer-events:none; }
+  .thumb.ph { display:grid; place-content:center; color:var(--mut); font-size:11.5px; cursor:default; }
+  .empty { color:var(--mut); padding:18px 6px; text-align:center; font-size:13px; }
+
+  /* preview */
+  .col.center { background:var(--bg); }
+  .toolbar { display:flex; align-items:center; gap:8px; padding:8px 14px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg button { border:0; background:var(--card); padding:5px 11px; font-size:13px; }
+  .seg button[aria-pressed="true"] { background:var(--ink); color:var(--bg); }
+  .toolbar label { display:flex; gap:6px; align-items:center; font-size:13px; color:var(--mut); }
+  .stage { flex:1; min-height:0; overflow:auto; padding:16px; display:flex; justify-content:center; align-items:flex-start; position:relative; }
+  .frame-wrap { background:#fff; box-shadow:0 2px 24px rgba(0,0,0,.14); border-radius:6px; overflow:hidden; transform-origin:top center; flex:none; }
+  .frame-wrap iframe { border:0; display:block; background:#fff; }
+  .placeholder { position:absolute; inset:0; display:grid; place-content:center; text-align:center; color:var(--mut); gap:6px; padding:30px; pointer-events:none; }
+  .placeholder h3 { margin:0; color:var(--ink); font-size:20px; }
+  .placeholder p { margin:0 auto; max-width:380px; }
+
+  /* outline */
+  .block { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:7px 8px; margin-bottom:6px; cursor:grab; }
+  .block.dragging { opacity:.4; }
+  .block.dropto { border-color:var(--acc); box-shadow:0 -3px 0 var(--acc) inset; }
+  .block .dot { width:8px; height:26px; border-radius:3px; background:var(--rc,#999); }
+  .block .t { font-weight:600; line-height:1.2; }
+  .block .s { font-size:11.5px; color:var(--mut); }
+  .block .ops { display:flex; gap:2px; }
+  .block .ops button { border:0; background:none; padding:2px 5px; color:var(--mut); border-radius:5px; font-size:14px; }
+  .block .ops button:hover { background:var(--bg); color:var(--ink); }
+  .quick { padding:10px 12px; border-top:1px solid var(--line); display:grid; gap:8px; }
+  .quick .r { display:flex; gap:6px; }
+  .quick select { flex:1; padding:6px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); }
+  .quick textarea { width:100%; height:70px; font:11px ui-monospace,monospace; border:1px solid var(--line); border-radius:8px; padding:6px; background:var(--card); color:var(--ink); }
+  .notes { margin:0 12px 8px; display:grid; gap:6px; }
+  .note { background:var(--warn-soft); color:var(--warn); border-radius:8px; padding:7px 10px; font-size:12.5px; }
+  .note.ok { background:var(--acc-soft); color:var(--acc); }
+  .foot { padding:12px; border-top:1px solid var(--line); display:grid; gap:6px; }
+
+  dialog { border:0; border-radius:12px; padding:0; width:min(1100px,94vw); height:min(760px,90vh); background:var(--panel); color:var(--ink); box-shadow:0 10px 60px rgba(0,0,0,.4); }
+  dialog::backdrop { background:rgba(0,0,0,.45); }
+  dialog .dh { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); }
+  dialog .dh b { flex:1; }
+  dialog .db { height:calc(100% - 52px); overflow:auto; background:var(--bg); display:flex; justify-content:center; padding:14px; }
+
+  .badge.warn { background:var(--warn-soft); color:var(--warn); }
+  .badge.ok { background:#e3f4ea; color:var(--ok); }
+  @media (prefers-color-scheme: dark) { .badge.ok { background:#16301f; } }
+  .dwrap { display:grid; grid-template-columns:minmax(0,1fr) 340px; height:calc(100% - 52px); }
+  .dwrap .db { height:100%; }
+  .dside { border-left:1px solid var(--line); overflow:auto; padding:12px 14px 18px; display:grid; gap:14px; align-content:start; background:var(--panel); font-size:12.5px; }
+  .dside h3 { margin:0 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); font-weight:600; }
+  .dside .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .dside .why { margin:6px 0 0; padding-left:16px; color:var(--mut); }
+  .dside .why li { margin:2px 0; }
+  .dials { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .dial { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px 8px; min-width:0; }
+  .dial .k { font-size:11px; color:var(--mut); }
+  .dial .v { display:flex; gap:6px; align-items:center; font-weight:600; min-width:0; }
+  .dial .v span.t { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .dial .v.none { color:var(--mut); font-weight:400; }
+  .dial .n { font-size:10.5px; color:var(--warn); }
+  .sw2 { width:14px; height:14px; border-radius:4px; border:1px solid var(--line); flex:none; background-image:linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%),linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%); background-size:6px 6px; background-position:0 0,3px 3px; position:relative; }
+  .sw2 i { position:absolute; inset:0; border-radius:3px; }
+  .slots { display:grid; gap:5px; }
+  .slot { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px 8px; display:grid; grid-template-columns:78px minmax(0,1fr); gap:6px; }
+  .slots, .slot .stack, .slot details { min-width:0; } .slot input[type=file] { max-width:100%; font-size:11px; }
+  .slot .k { color:var(--mut); font-size:11px; padding-top:1px; }
+  .slot .v { min-width:0; overflow-wrap:anywhere; }
+  .slot .v.none { color:var(--mut); }
+  .dial input[type=color] { width:26px; height:22px; padding:0; border:1px solid var(--line); border-radius:5px; background:none; flex:none; }
+  .dial input[type=text], .dial input[type=number] { min-width:0; width:100%; font:inherit; font-weight:600; border:1px solid var(--line); border-radius:6px; padding:2px 5px; background:var(--bg); color:var(--ink); }
+  .dial input:disabled { opacity:.5; }
+  .dial.edited { border-color:var(--acc); }
+  .slot textarea, .slot input[type=text], .slot input[type=url] { width:100%; font:inherit; border:1px solid var(--line); border-radius:6px; padding:3px 6px; background:var(--bg); color:var(--ink); }
+  .slot textarea { resize:vertical; min-height:38px; }
+  .slot .stack { display:grid; gap:4px; grid-template-columns:minmax(0,1fr); } .cardrow { min-width:0; } .slot .sub { color:var(--mut); font-size:11px; }
+  .dside select { font:inherit; border:1px solid var(--line); border-radius:6px; padding:3px 5px; background:var(--card); color:var(--ink); max-width:100%; }
+  .cardrow { display:flex; gap:4px; align-items:center; } .cardrow .t { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .editbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; color:var(--mut); font-size:11.5px; }
+  .seg2 { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg2 button { border:0; background:var(--card); padding:3px 9px; font-size:12px; }
+  .seg2 button[aria-pressed="true"] { background:var(--ink); color:var(--bg); }
+  .fbody { height:calc(100% - 52px); overflow:auto; padding:14px 18px; background:var(--bg); }
+  .fbody table { border-collapse:collapse; width:100%; font-size:12.5px; margin-bottom:16px; }
+  .fbody th, .fbody td { text-align:left; padding:5px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .fbody th { color:var(--mut); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+  .fbody h3 { margin:14px 0 6px; font-size:14px; }
+  .fbody .sum { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+  @media (max-width:1000px){ main{grid-template-columns:1fr; overflow:auto} .col{min-height:420px} .steps{display:none} .dwrap{grid-template-columns:1fr; overflow:auto} .dside{border-left:0; border-top:1px solid var(--line)} }
+  .opt{font-size:12px;color:var(--mut,#667);display:inline-flex;gap:4px;align-items:center;margin-left:6px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">Site Kit <small>build a website from parts of other websites</small></div>
+  <div class="steps" aria-hidden="true"><span><b>1</b>Add websites</span><span><b>2</b>Pick parts</span><span><b>3</b>Download</span></div>
+  <button class="btn small" id="checkBtn" title="Draw every part's copy beside the original and list which are exact or approximate">Part check (CSV)</button>
+  <button class="btn small" id="fontBtn" title="Which parts still have fonts the font dial cannot change">Font report</button>
+</header>
+
+<main>
+  <!-- LEFT: websites and their parts -->
+  <section class="col left" aria-label="Websites and parts">
+    <h2>1 · Your websites</h2>
+    <div class="drop" id="drop">
+      <strong id="dropT">Drop website files here</strong>
+      <p>Saved .html pages work best (File → Save As in your browser, or a Webflow export).</p>
+      <button class="btn primary" id="pick">Choose files…</button>
+      <input type="file" id="file" accept=".html,.htm,.txt" multiple hidden>
+    </div>
+    <details class="paste"><summary>…or paste the page code</summary><textarea id="pasteBox" placeholder="Paste HTML here"></textarea><button class="btn small" id="pasteGo" style="margin-top:6px">Read it</button></details>
+    <div class="sites" id="sites"></div>
+    <div class="pbar">
+      <h2 id="partsH">2 · Parts you can use</h2>
+      <div class="prow"><input class="search" id="search" type="search" placeholder="Search parts…" aria-label="Search parts"><select id="filters" aria-label="Show only one kind of part"></select></div>
+    </div>
+    <div id="parts"><div class="empty">Add a website above and its parts will show up here.</div></div>
+  </section>
+
+  <!-- CENTER: live preview -->
+  <section class="col center" aria-label="Page preview">
+    <div class="toolbar">
+      <div class="seg" id="devices" role="group" aria-label="Screen size">
+        <button data-w="1440" aria-pressed="true">Computer</button>
+        <button data-w="820" aria-pressed="false">Tablet</button>
+        <button data-w="390" aria-pressed="false">Phone</button>
+      </div>
+      <label title="Runs each site's own scripts inside an isolated box so you see the real look. Turn off if a page feels slow."><input type="checkbox" id="anim" checked> Play animations</label>
+      <span style="margin-left:auto;color:var(--mut);font-size:12.5px" id="stat"></span>
+    </div>
+    <div class="stage" id="stage">
+      <div class="frame-wrap" id="frameWrap" hidden><iframe id="view" title="Preview of your page"></iframe></div>
+      <div class="placeholder" id="ph"><h3>Your page appears here</h3><p>Add a website on the left, then press <b>+ Add</b> on the parts you like — or pick a quick-start layout on the right.</p></div>
+    </div>
+  </section>
+
+  <!-- RIGHT: page outline -->
+  <section class="col right" aria-label="Your page">
+    <h2>3 · Your page</h2>
+    <div class="notes" id="notes"></div>
+    <div class="scroll" id="outline"><div class="empty">Nothing here yet. Press <b>+ Add</b> on a part, or use quick start below.</div></div>
+    <div class="quick">
+      <div class="r"><select id="tpl" aria-label="Quick-start layout">
+        <option value="landing">Landing page</option>
+        <option value="business">Business site</option>
+        <option value="portfolio">Portfolio</option>
+        <option value="realestate">Real estate</option>
+      </select><button class="btn" id="tplGo">Build it for me</button></div>
+      <details><summary style="cursor:pointer;color:var(--mut);font-size:12.5px">Advanced: describe the page as JSON</summary>
+        <textarea id="intent" spellcheck="false">{"slots":[{"role":"nav"},{"role":"hero"},{"role":"features"},{"role":"footer"}]}</textarea>
+        <button class="btn small" id="intentGo" style="margin-top:4px">Build from JSON</button></details>
+    </div>
+    <div class="foot">
+      <button class="btn primary" id="download" disabled>Download website</button>
+      <button class="btn ghost" id="clearPage">Start over</button>
+      <label class="opt" title="Build one real page instead of stacked frames (experimental)"><input type="checkbox" id="optDoc"> One real page</label>
+      <label class="opt" title="Add working menus, tabs, sliders, forms… to the copy (experimental)"><input type="checkbox" id="optBeh"> Working menus &amp; widgets</label>
+      <button class="btn small" id="projBtn" title="Several pages, links between them, download as a folder">Project…</button>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlg"><div class="dh"><b id="dlgT"></b><button class="btn small" id="dlgAdd">+ Add to my page</button><button class="btn small" id="dlgX">Close</button></div><div class="dwrap"><div class="db" id="dlgB"></div><aside class="dside" id="dlgS" aria-label="What this part is made of"></aside></div></dialog>
+<dialog id="projDlg"><div class="dh"><b>Project: pages and links</b><button class="btn small" id="projX">Close</button></div><div class="fbody" id="projB"></div></dialog>
+<dialog id="fontDlg"><div class="dh"><b>Font report: parts with fonts the font dial can’t change yet</b><button class="btn small" id="fontCsv">Download CSV</button><button class="btn small" id="fontX">Close</button></div><div class="fbody" id="fontB"></div></dialog>
+
+<script>
+/* =====================================================================
+   1. ROLES  (plain-language labels shown to the user)
+   ===================================================================== */
+const ROLES = {
+  nav:        { label:'Menu bar',            hue:215 },
+  hero:       { label:'Big banner',          hue:12  },
+  features:   { label:'What we offer',       hue:150 },
+  gallery:    { label:'Gallery / projects',  hue:280 },
+  pricing:    { label:'Pricing',             hue:45  },
+  testimonial:{ label:'Customer quotes',     hue:330 },
+  team:       { label:'Team',                hue:190 },
+  stats:      { label:'Numbers',             hue:100 },
+  faq:        { label:'Questions & answers', hue:250 },
+  cta:        { label:'Call to action',      hue:0   },
+  contact:    { label:'Contact',             hue:170 },
+  blog:       { label:'News / articles',     hue:30  },
+  footer:     { label:'Footer',              hue:225 },
+  text:       { label:'Text section',        hue:60  },
+  overlay:    { label:'Popup / overlay',     hue:300 },
+  section:    { label:'Content section',     hue:0, sat:0 }
+};
+const roleColor = r => { const o = ROLES[r] || ROLES.section; return o.sat === 0 ? '#9a958c' : `hsl(${o.hue} 62% 52%)`; };
+const roleLabel = r => (ROLES[r] || ROLES.section).label;
+
+/* =====================================================================
+   2. SEGMENTER — works on a RENDERED page so it can see real boxes.
+   Splits through wrapper divs (e.g. Webflow's "page-wrapper") and remembers
+   each part's wrapper chain so wrapper CSS still applies when re-assembled.
+   ===================================================================== */
+const NONVIS = new Set(['SCRIPT','STYLE','NOSCRIPT','LINK','META','TEMPLATE','BASE','TITLE']);
+
+/* ---------- part extractor: tokens, slots, motion for each of THESE parts ---------- */
+// Promotes lazy-load attributes to real ones so images exist when the page is measured and extracted.
+// Pure, self-contained (it is also injected into the sandboxed frame via toString), works on any Document.
+// Returns the number of things it promoted. Things it cannot resolve are left alone (the extractor still flags those).
+function unlazy(doc) {
+  var n = 0, PH = /^data:image\/(gif|svg\+xml)/;
+  var isPlaceholder = function (s) { return !s || (PH.test(s) && s.length < 400) || /^about:blank$/.test(s); };
+  var pick = function (el, names) { for (var i = 0; i < names.length; i++) { var v = el.getAttribute(names[i]); if (v && v.trim()) return [names[i], v.trim()]; } return null; };
+  var imgs = doc.querySelectorAll('img');
+  for (var i = 0; i < imgs.length; i++) {
+    var im = imgs[i], hit = false;
+    var s = pick(im, ['data-src', 'data-lazy-src', 'data-original', 'data-lazy', 'data-url']);
+    if (s && isPlaceholder(im.getAttribute('src'))) { im.setAttribute('src', s[1]); im.removeAttribute(s[0]); hit = true; }
+    var ss = pick(im, ['data-srcset', 'data-lazy-srcset']);
+    if (ss) { im.setAttribute('srcset', ss[1]); im.removeAttribute(ss[0]); hit = true; }
+    if (hit) { im.removeAttribute('data-sizes'); n++; }
+    if (im.getAttribute('loading') === 'lazy' && im.getAttribute('src')) im.setAttribute('loading', 'eager');
+    if (im.classList) { im.classList.remove('lazyload', 'lazy', 'lazyloading'); if (hit) im.classList.add('lazyloaded'); }
+  }
+  var srcs = doc.querySelectorAll('source[data-srcset], source[data-src]');
+  for (var j = 0; j < srcs.length; j++) {
+    var so = srcs[j], d = so.getAttribute('data-srcset') || so.getAttribute('data-src');
+    if (d) { so.setAttribute('srcset', d); so.removeAttribute('data-srcset'); so.removeAttribute('data-src'); n++; }
+  }
+  var bgs = doc.querySelectorAll('[data-bg], [data-background], [data-background-image]');
+  for (var k = 0; k < bgs.length; k++) {
+    var b = bgs[k], u = b.getAttribute('data-bg') || b.getAttribute('data-background') || b.getAttribute('data-background-image');
+    if (u && !/^\s*(url\(|linear-gradient|radial-gradient)/.test(u)) u = 'url("' + u.replace(/"/g, '%22') + '")';
+    if (u && !/background-image\s*:/.test(b.getAttribute('style') || '')) { ['data-bg','data-background','data-background-image'].forEach(function (a) { b.removeAttribute(a); }); b.setAttribute('style', (b.getAttribute('style') || '').replace(/;?\s*$/, ';') + 'background-image:' + u); n++; }
+  }
+  var vids = doc.querySelectorAll('video[data-src], video source[data-src]');
+  for (var m = 0; m < vids.length; m++) { var v = vids[m]; v.setAttribute('src', v.getAttribute('data-src')); v.removeAttribute('data-src'); n++; }
+  return n;
+}
+/* Waits (bounded) for the images in a document to finish loading, so heights are real when we measure. */
+function imagesSettled(doc, ms) {
+  var list = Array.prototype.filter.call(doc.querySelectorAll('img'), function (i) { return (i.getAttribute('src') || i.getAttribute('srcset')) && !i.complete; });
+  if (!list.length) return Promise.resolve(0);
+  return new Promise(function (res) {
+    var left = list.length, done = function () { if (--left <= 0) { clearTimeout(t); res(list.length); } }, t = setTimeout(function () { res(list.length - left); }, ms || 4000);
+    list.forEach(function (i) { i.addEventListener('load', done); i.addEventListener('error', done); });
+  });
+}
+
+// Single-page apps: the router (a script) decides which "page" div is shown; with scripts off none is. We switch on the one the router would show first,
+// so the copy has real content. Pure, self-contained, takes a Document that has been laid out. Returns how many routes it switched on.
+function activateSpa(doc) {
+  var win = doc.defaultView, STATES = ['active', 'is-active', 'current', 'is-current', 'show', 'visible', 'open', 'selected'], n = 0, seen = [];
+  var shown = function (e) { return win.getComputedStyle(e).display !== 'none'; };
+  var all = doc.body ? doc.body.querySelectorAll('*') : [];
+  for (var i = 0; i < all.length; i++) {
+    var p = all[i], kids = [].filter.call(p.children, function (c) { return c.classList && c.classList.length && !/^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT)$/.test(c.tagName); });
+    if (kids.length < 3 || seen.indexOf(p) >= 0) continue;
+    var count = {}; kids.forEach(function (k) { [].forEach.call(k.classList, function (c) { count[c] = (count[c] || 0) + 1; }); });
+    var cls = Object.keys(count).filter(function (c) { return count[c] >= 3; });
+    for (var j = 0; j < cls.length; j++) {
+      var group = kids.filter(function (k) { return k.classList.contains(cls[j]); });
+      if (group.length < 3 || group.some(shown)) continue;                                  // a router group: every page hidden
+      if (group.some(function (g) { return [].some.call(g.classList, function (c) { return /(^|[-_])(active|current|selected|open|show|visible|on)$/i.test(c); }); })) continue;   // the saved page already says which route was showing: respect it
+      if (!group.every(function (g) { return g.textContent.replace(/\s+/g, ' ').trim().length > 40; })) continue;
+      var pref = group.filter(function (g) { return /(^|[-_])(home|index|main|start|landing)([-_]|$)/i.test(g.id || '') || /(^|[-_])(home|index)([-_]|$)/i.test(g.getAttribute('data-page') || g.getAttribute('data-route') || ''); })[0] || group[0];
+      for (var k = 0; k < STATES.length; k++) { pref.classList.add(STATES[k]); if (shown(pref)) { n++; seen.push(p); break; } pref.classList.remove(STATES[k]); }
+      if (seen.indexOf(p) >= 0) break;
+    }
+  }
+  return n;
+}
+
+// Text that is invisible only because a script has not faded it in yet (opacity:0 set in CSS, to be animated by GSAP / Webflow / an observer).
+// Marks the top-most such elements with data-sk-reveal so the merged document can show them. Things hidden ON PURPOSE are left alone: popups, menus, tooltips,
+// aria-hidden content, tab panels and non-current slides. Pure, self-contained, takes a laid-out Document. Returns how many elements it marked.
+function markHidden(doc) {
+  var win = doc.defaultView, n = 0;
+  var PURPOSE = '[aria-hidden="true"],[hidden],dialog,[role="dialog"],[role="menu"],[role="tooltip"],[role="listbox"],[role="tabpanel"],[role="alert"],[class*="modal"],[class*="popup"],[class*="dropdown"],[class*="tooltip"],[class*="lightbox"],[class*="drawer"],[class*="slide"],[class*="swiper"],[class*="carousel"],[class*="tab-"],[class*="tabs"],[class*="cursor"],[class*="preloader"],[class*="loader"],[class*="toast"],[class*="overlay"],[class*="cookie"],[class*="mega"],[class*="submenu"],[class*="sub-menu"]';
+  var TEXTY = 'h1,h2,h3,h4,h5,h6,p,blockquote,figcaption,li,span,div,a';
+  var els = doc.body ? doc.body.querySelectorAll(TEXTY) : [];
+  for (var i = 0; i < els.length; i++) {
+    var e = els[i], cs = win.getComputedStyle(e);
+    if (+cs.opacity > 0.05 || cs.display === 'none' || cs.position === 'fixed') continue;
+    var txt = (e.textContent || '').replace(/\s+/g, ' ').trim();
+    if (txt.length < 8) continue;
+    var r = e.getBoundingClientRect(); if (r.width < 8 || r.height < 8) continue;
+    if (e.closest(PURPOSE) || e.closest('[data-sk-reveal]')) continue;
+    var up = e.parentElement, hiddenAbove = false;
+    while (up && up !== doc.body) { if (+win.getComputedStyle(up).opacity < 0.05 || win.getComputedStyle(up).display === 'none') { hiddenAbove = true; break; } up = up.parentElement; }
+    if (hiddenAbove) continue;                                                              // only the top-most hidden element is marked
+    e.setAttribute('data-sk-reveal', ''); n++;
+  }
+  return n;
+}
+
+// Link resolution for exported pages (Stage 1.3). Pure and DOM-based; also injected into the template.
+// ctx = { origin: 'https://site.com' | '', pages: [{ id, file, sourceUrl }], file: 'index.html' (the page being exported), here: '/path' (its source path), ids: Set | null (ids present in the output), rules: { [href]: { action, target } } }
+// status: page | anchor | anchor-missing | original | original-kept | external | contact | dead
+function linkHost(u) { try { return new URL(u).hostname.replace(/^www\./, '').toLowerCase(); } catch (e) { return ''; } }
+function linkPathKey(p) { p = String(p || '/').split('#')[0].split('?')[0]; try { p = decodeURIComponent(p); } catch (e) {} p = p.replace(/\/index\.html?$/i, '/').replace(/\.html?$/i, '').replace(/\/+$/, ''); return (p || '/').toLowerCase(); }
+function guessOrigin(doc) {
+  // canonical / og:url / <base> first (reliable); else the most common absolute link host (a guess, flagged as such)
+  var pick = function (sel, attr) { var e = doc.querySelector(sel); var v = e && (e.getAttribute(attr) || ''); try { return v ? new URL(v).origin : ''; } catch (x) { return ''; } };
+  var o = pick('link[rel="canonical"]', 'href') || pick('meta[property="og:url"]', 'content') || pick('base[href]', 'href');
+  if (o && !/^https?:\/\/(localhost|127\.)/.test(o)) return { origin: o, sure: true };
+  var count = {}, best = '', n = 0;
+  Array.prototype.forEach.call(doc.querySelectorAll('a[href]'), function (a) { var h = a.getAttribute('href') || ''; if (!/^https?:\/\//i.test(h)) return; var k = linkHost(h); count[k] = (count[k] || 0) + 1; });
+  Object.keys(count).forEach(function (k) { if (count[k] > n) { n = count[k]; best = k; } });
+  return { origin: best ? 'https://' + best : '', sure: false };
+}
+function classifyHref(raw, ctx) {
+  var t = String(raw == null ? '' : raw).trim(), rules = ctx.rules || {}, route = /^#!?\//.test(t);
+  if (route) { var rp = t.replace(/^#!?/, ''); var rule0 = rules[rp] || rules[t]; t = rp; rules = Object.assign({}, rules, rule0 ? (function () { var o = {}; o[rp] = rule0; return o; })() : {}); }   // single-page-app hash routes (#/about) are page links, not in-page anchors
+  var rule = rules[t];
+  if (!t || t === '#' || /^javascript:/i.test(t)) return { status: 'dead' };
+  if (/^(mailto:|tel:|sms:)/i.test(t)) return { status: 'contact' };
+  if (t.charAt(0) === '#') { var id = t.slice(1); try { id = decodeURIComponent(id); } catch (e) {} return { status: !ctx.ids || ctx.ids.has(id) ? 'anchor' : 'anchor-missing' }; }
+  var base = (ctx.origin || 'https://unknown.invalid') + (ctx.here || '/'), u;
+  try { u = new URL(t, base); } catch (e) { return { status: 'dead' }; }
+  if (!/^https?:$/.test(u.protocol)) return { status: 'external' };
+  var same = ctx.origin ? linkHost(u.href) === linkHost(ctx.origin) : u.hostname === 'unknown.invalid';
+  if (!same) return { status: 'external' };
+  var key = linkPathKey(u.pathname), pages = ctx.pages || [], hit = null;
+  for (var i = 0; i < pages.length; i++) if (linkPathKey(pages[i].sourceUrl) === key) { hit = pages[i]; break; }
+  if (hit) return { status: 'page', href: (hit.file === ctx.file ? '' : hit.file) + (u.hash || (hit.file === ctx.file ? '#' : '')), page: hit.id };
+  if (rule) {
+    if (rule.action === 'keep') return { status: 'original-kept' };
+    if (rule.action === 'page') { var pg = pages.filter(function (p) { return p.id === rule.target; })[0]; if (pg) return { status: 'page', href: (pg.file === ctx.file ? '#' : pg.file), page: pg.id, byRule: true }; }
+    if (rule.action === 'anchor' && rule.target) return { status: 'anchor', href: '#' + rule.target, byRule: true };
+    if (rule.action === 'remove') return { status: 'dead', href: '#', byRule: true };
+  }
+  return { status: 'original' };
+}
+/* Walks every link under root. With rewrite:true it applies the result to the markup; always returns one row per link. */
+function resolveLinks(root, ctx, o) {
+  var rewrite = !!(o && o.rewrite), rows = [];
+  Array.prototype.forEach.call(root.querySelectorAll('a[href], area[href]'), function (a) {
+    var raw = a.getAttribute('href'), r = classifyHref(raw, ctx);
+    rows.push({ status: r.status, href: raw, to: r.href != null ? r.href : raw, text: (a.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60), page: r.page || null, byRule: !!r.byRule });
+    if (!rewrite) return;
+    if (r.href != null) a.setAttribute('href', r.href);
+    if (r.status === 'original') a.setAttribute('data-original-link', 'true');
+    else if (r.status === 'external' || r.status === 'contact') a.setAttribute('data-external', 'true');
+    else if (r.status === 'dead') a.setAttribute('data-sk-dead', 'true');
+    else if (r.status === 'anchor-missing') a.setAttribute('data-sk-dead', 'anchor');
+  });
+  return rows;
+}
+function summarizeLinks(rows) { var s = { total: rows.length, page: 0, anchor: 0, 'anchor-missing': 0, original: 0, 'original-kept': 0, external: 0, contact: 0, dead: 0 }; rows.forEach(function (r) { s[r.status]++; }); s.unacknowledged = s.original + s['anchor-missing']; return s; }
+
+// Stage 3: behaviours library. Site scripts are stripped from copies, so menus, accordions, sliders etc. stop working.
+// Two halves:  skAnnotate(root)  (runs in the tool; finds widgets by markup heuristics and tags them data-sk-behaviour)
+//              skRuntime()       (runs in the exported page; ten small modules, vanilla JS, no dependencies)
+// Behind a flag: nothing here runs unless export.behaviours is on.
+var SK_BEHAVIOURS = ['menu', 'accordion', 'tabs', 'slider', 'lightbox', 'modal', 'form', 'reveal', 'sticky', 'smooth'];
+function skAnnotate(root) {
+  var doc = root.ownerDocument || root, found = {}, n = 0;
+  var cls = function (e) { return ((e.getAttribute && e.getAttribute('class')) || '') + ' ' + (e.id || ''); };
+  var mark = function (e, b, target) { if (!e || e.hasAttribute('data-sk-behaviour')) return false; e.setAttribute('data-sk-behaviour', b); found[b] = (found[b] || 0) + 1;
+    if (target) { if (!target.id) target.id = 'skt' + (++n); e.setAttribute('data-sk-target', target.id); target.setAttribute('data-sk-panel', ''); } return true; };
+  var all = function (sel) { return Array.prototype.slice.call(root.querySelectorAll(sel)); };
+  var visibleLinks = function (e) { return e.querySelectorAll('a[href]').length; };
+  // --- menu: a button-ish element named like a hamburger, whose target is the nav list it sits beside
+  all('button,[role=button],a,div,span').forEach(function (t) {
+    if (t.hasAttribute('data-sk-behaviour') || t.closest('[data-sk-behaviour=accordion],[data-sk-behaviour=tabs],form')) return;
+    var name = cls(t) + ' ' + (t.getAttribute('aria-label') || ''), isTog = /burger|hamburger|menu-?(toggle|btn|button|icon|trigger)|nav-?(toggle|btn|button|icon|trigger)|navbar-toggler|mobile-?menu|w-nav-button|toggle-?menu/i.test(name) || (/^(button)$/i.test(t.tagName) && /\bmenu\b/i.test(t.getAttribute('aria-label') || '') && !visibleLinks(t));
+    if (!isTog || visibleLinks(t) > 1) return;
+    var tg = null, ctl = t.getAttribute('aria-controls'); if (ctl) tg = doc.getElementById(ctl);
+    if (!tg) { var scope = t.closest('header,nav,[class*=navbar],[class*=header],[data-skpart]') || t.parentElement; var c = [].slice.call(scope.querySelectorAll('nav,ul,[class*=menu],[class*=nav-]')).filter(function (e) { return e !== t && !e.contains(t) && !t.contains(e) && visibleLinks(e) >= 2; }); tg = c[0] || null; }
+    if (tg) mark(t, 'menu', tg);
+  });
+  // --- accordion: <details> is native; aria-expanded buttons and faq/accordion items need a toggle
+  all('[aria-expanded]').forEach(function (b) { if (b.hasAttribute('data-sk-behaviour') || b.closest('[data-sk-behaviour=menu]')) return; var ctl = b.getAttribute('aria-controls'), p = ctl && doc.getElementById(ctl) || b.nextElementSibling; if (p && p !== b && !p.contains(b)) mark(b, 'accordion', p); });
+  all('[class*=accordion] > *, [class*=faq] > *').forEach(function (it) { if (it.querySelector('details,[aria-expanded],[data-sk-behaviour]') || it.children.length < 2 || it.matches('details')) return; var hd = it.children[0], p = it.children[1]; if (!/^(a|button|div|h\d|span|summary|dt)$/i.test(hd.tagName) || hd.querySelector('a[href]')) return; mark(hd, 'accordion', p); });
+  // --- tabs: role=tab, or Webflow-style tab links with panes in the same order
+  all('[role=tablist]').forEach(function (l) { var tabs = [].slice.call(l.querySelectorAll('[role=tab]')); tabs.forEach(function (t) { var p = doc.getElementById(t.getAttribute('aria-controls') || ''); if (p) mark(t, 'tabs', p); }); });
+  all('[class*=tabs-menu],[class*=tab-menu],[class*=tab-list],[class*=tabs-nav]').forEach(function (menu) { var wrap = menu.parentElement, panes = wrap && [].slice.call(wrap.querySelectorAll('[class*=tab-pane],[class*=tabs-pane],[class*=tab-content] > *')); var tabs = [].slice.call(menu.children); if (!panes || panes.length < 2 || panes.length !== tabs.length) return; tabs.forEach(function (t, i) { mark(t, 'tabs', panes[i]); }); });
+  // --- slider: a container named like one, with 2+ slides
+  all('[class*=slider],[class*=carousel],[class*=swiper],[class*=splide],[class*=slick]').forEach(function (c) {
+    if (c.hasAttribute('data-sk-behaviour') || c.closest('[data-sk-behaviour=slider]') || /arrow|dot|nav|button|btn|icon|mask-?item/i.test(c.getAttribute('class') || '')) return;
+    var best = null; [c].concat([].slice.call(c.querySelectorAll('div,ul'))).forEach(function (e) { if (!best || e.children.length > best.children.length) best = e; });
+    if (best && best.children.length >= 2 && [].slice.call(best.children).filter(function (k) { return !/arrow|dot|button|btn/i.test(cls(k)); }).length >= 2) { mark(c, 'slider'); c.setAttribute('data-sk-track', ''); best.setAttribute('data-sk-track-el', ''); }
+  });
+  // --- lightbox: pictures that link to a bigger picture, or are marked as one
+  all('a[href] > img,[data-lightbox] img,[class*=lightbox] img').forEach(function (im) { var a = im.closest('a[href]'), href = a && a.getAttribute('href') || ''; if (a && !/^data:image\//i.test(href) && !/\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(href) && !a.closest('[class*=lightbox],[data-lightbox]')) return; mark(a || im, 'lightbox'); });
+  // --- modal
+  all('[data-bs-toggle=modal],[data-toggle=modal]').forEach(function (o) { var id = (o.getAttribute('data-bs-target') || o.getAttribute('data-target') || o.getAttribute('href') || '').replace(/^#/, ''), m = id && doc.getElementById(id); if (m) mark(o, 'modal', m); });
+  all('a[href^="#"]').forEach(function (a) { var id = a.getAttribute('href').slice(1), m = id.length > 1 && doc.getElementById(id); if (m && /modal|popup|dialog|lightbox-?content/i.test(cls(m)) && !a.hasAttribute('data-sk-behaviour')) mark(a, 'modal', m); });
+  // --- forms
+  all('form').forEach(function (f) { mark(f, 'form'); });
+  // --- reveal: elements the original page animated in when scrolled to
+  all('[data-aos],[data-w-id],[data-scroll],[data-reveal],.reveal,.fade-in,[class*=animate-on],[class*=fadeIn]').forEach(function (e) { if (!e.closest('[data-sk-behaviour=reveal]') && e.getBoundingClientRect !== undefined) mark(e, 'reveal'); });
+  return found;
+}
+function skRuntime() {
+  var d = document, $ = function (s, r) { return [].slice.call((r || d).querySelectorAll(s)); }, by = function (id) { return id && d.getElementById(id); };
+  d.documentElement.classList.add('sk-js');
+  var tgt = function (e) { return by(e.getAttribute('data-sk-target')); };
+  var setOpen = function (e, on) { if (!e) return; e.toggleAttribute('data-sk-open', on); ['open', 'is-open', 'is-active', 'w--open'].forEach(function (c) { e.classList.toggle(c, on); }); };
+  // 1 menu
+  $('[data-sk-behaviour=menu]').forEach(function (t) { var m = tgt(t); t.setAttribute('aria-expanded', 'false'); if (!t.hasAttribute('tabindex') && !/^(button|a)$/i.test(t.tagName)) t.tabIndex = 0;
+    var go = function (on) { setOpen(m, on); setOpen(t, on); t.setAttribute('aria-expanded', String(on)); };
+    t.addEventListener('click', function (e) { e.preventDefault(); go(!t.hasAttribute('data-sk-open')); });
+    t.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.click(); } if (e.key === 'Escape') go(false); });
+    m && m.addEventListener('click', function (e) { if (e.target.closest('a[href]')) go(false); }); });
+  // 2 accordion
+  $('[data-sk-behaviour=accordion]').forEach(function (t) { var p = tgt(t), open = t.getAttribute('aria-expanded') === 'true' || (p && getComputedStyle(p).display !== 'none' && p.offsetHeight > 0); if (!/^(button|a)$/i.test(t.tagName)) { t.tabIndex = 0; t.setAttribute('role', 'button'); }
+    var set = function (on) { setOpen(p, on); setOpen(t, on); t.setAttribute('aria-expanded', String(on)); if (p) p.hidden = !on; };
+    set(!!open); t.addEventListener('click', function (e) { e.preventDefault(); set(!t.hasAttribute('data-sk-open')); }); t.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.click(); } }); });
+  // 3 tabs
+  var groups = []; $('[data-sk-behaviour=tabs]').forEach(function (t) { var g = groups.filter(function (x) { return x.p === t.parentElement; })[0]; if (!g) groups.push(g = { p: t.parentElement, tabs: [] }); g.tabs.push(t); });
+  groups.forEach(function (g) { var show = function (t) { g.tabs.forEach(function (x) { var on = x === t, p = tgt(x); setOpen(x, on); x.setAttribute('aria-selected', String(on)); if (p) { p.hidden = !on; p.style.display = on ? 'block' : 'none'; setOpen(p, on); } }); };
+    g.tabs.forEach(function (t) { t.addEventListener('click', function (e) { e.preventDefault(); show(t); }); }); show(g.tabs.filter(function (t) { return t.classList.contains('w--current') || t.getAttribute('aria-selected') === 'true'; })[0] || g.tabs[0]); });
+  // 4 slider (scroll-snap track with arrows and keys; no autoplay)
+  $('[data-sk-behaviour=slider]').forEach(function (c) { var tr = c.querySelector('[data-sk-track-el]') || c;
+    if ([].some.call(tr.children, function (s) { return /absolute|fixed/.test(getComputedStyle(s).position); })) return;      // layered / stacked sliders are left exactly as they are
+    tr.style.overflowX = 'auto'; tr.style.scrollSnapType = 'x mandatory'; tr.style.scrollbarWidth = 'none'; tr.style.transform = 'none'; tr.style.display = tr.style.display || 'flex';
+    [].slice.call(tr.children).forEach(function (s) { s.style.scrollSnapAlign = 'start'; s.style.flex = s.style.flex || '0 0 100%'; s.style.position = s.style.position || 'relative'; s.style.transform = 'none'; s.style.left = 'auto'; });
+    var step = function (dir) { tr.scrollBy({ left: dir * tr.clientWidth, behavior: 'smooth' }); }; c.style.position = c.style.position || 'relative';
+    [['Previous', -1, 'left:8px', '‹'], ['Next', 1, 'right:8px', '›']].forEach(function (a) { var b = d.createElement('button'); b.type = 'button'; b.className = 'sk-arrow'; b.setAttribute('aria-label', a[0] + ' slide'); b.style.cssText = 'position:absolute;top:50%;' + a[2] + ';transform:translateY(-50%);z-index:5;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:24px;cursor:pointer'; b.textContent = a[3]; b.addEventListener('click', function () { step(a[1]); }); c.appendChild(b); });
+    c.tabIndex = 0; c.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight') step(1); if (e.key === 'ArrowLeft') step(-1); }); });
+  // 5 lightbox
+  var lb = null, closeLb = function () { lb && lb.classList.remove('sk-on'); };
+  $('[data-sk-behaviour=lightbox]').forEach(function (e) { e.style.cursor = 'zoom-in'; e.addEventListener('click', function (ev) { var im = e.matches('img') ? e : e.querySelector('img'); if (!im) return; ev.preventDefault();
+    if (!lb) { lb = d.createElement('div'); lb.className = 'sk-lightbox'; lb.setAttribute('role', 'dialog'); lb.setAttribute('aria-modal', 'true'); lb.innerHTML = '<button type="button" aria-label="Close">×</button><img alt="">'; d.body.appendChild(lb); lb.addEventListener('click', closeLb); }
+    var a = e.closest('a[href]'), href = a && /^data:image\/|\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(a.getAttribute('href') || '') ? a.href : '', i = lb.querySelector('img'); i.src = href || im.currentSrc || im.src; i.alt = im.alt || ''; lb.classList.add('sk-on'); lb.querySelector('button').focus(); }); });
+  // 6 modal
+  var shut = function (m) { if (m) { m.removeAttribute('data-sk-open'); m.hidden = true; m.style.display = 'none'; ['show', 'open', 'is-open'].forEach(function (c) { m.classList.remove(c); }); } };
+  $('[data-sk-behaviour=modal]').forEach(function (o) { var m = tgt(o); if (!m) return; o.addEventListener('click', function (e) { e.preventDefault(); m.hidden = false; m.style.display = 'block'; m.setAttribute('data-sk-open', ''); m.classList.add('show', 'open'); var c = m.querySelector('[data-bs-dismiss],[data-dismiss],[class*=close],button'); c && c.focus(); });
+    m.addEventListener('click', function (e) { if (e.target === m || e.target.closest('[data-bs-dismiss],[data-dismiss],[class*=close]')) shut(m); }); });
+  // 7 form validation (no backend here: valid forms with no real action show a notice instead of navigating away)
+  $('form[data-sk-behaviour=form]').forEach(function (f) { f.noValidate = true; var note = d.createElement('div'); note.className = 'sk-formnote'; note.setAttribute('role', 'status'); note.setAttribute('aria-live', 'polite'); f.appendChild(note);
+    f.addEventListener('submit', function (e) { var bad = $('input,select,textarea', f).filter(function (x) { x.classList.remove('sk-invalid'); return x.type !== 'hidden' && x.type !== 'submit' && !x.disabled && !x.checkValidity(); });
+      bad.forEach(function (x) { x.classList.add('sk-invalid'); x.setAttribute('aria-invalid', 'true'); });
+      if (bad.length) { e.preventDefault(); note.className = 'sk-formnote sk-bad'; note.textContent = 'Please fix ' + bad.length + ' field' + (bad.length > 1 ? 's' : '') + ' before sending.'; bad[0].focus(); return; }
+      var act = (f.getAttribute('action') || '').trim(); if (!act || act === '#' || /^javascript:/i.test(act)) { e.preventDefault(); note.className = 'sk-formnote sk-ok'; note.textContent = 'Thanks, your message looks complete. (This copy has no form handler connected yet.)'; } }); });
+  // 8 reveal on scroll
+  var rv = $('[data-sk-behaviour=reveal]'); if ('IntersectionObserver' in window && rv.length) { var io = new IntersectionObserver(function (es) { es.forEach(function (x) { if (x.isIntersecting) { x.target.classList.add('sk-in'); io.unobserve(x.target); } }); }, { threshold: 0.12 }); rv.forEach(function (e) { if (e.getBoundingClientRect().top > innerHeight) { e.classList.add('sk-pre'); io.observe(e); } }); }
+  // 9 sticky header: shadow once scrolled (only for headers that are fixed or sticky)
+  var hd = $('header,nav,[class*=navbar],[class*=header]').filter(function (e) { var p = getComputedStyle(e).position; return p === 'fixed' || p === 'sticky'; }), st = function () { var on = scrollY > 8; hd.forEach(function (e) { e.classList.toggle('sk-stuck', on); }); };
+  if (hd.length) { addEventListener('scroll', st, { passive: true }); st(); }
+  // 10 smooth scroll for in-page links, leaving room for a fixed header
+  d.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a[href^="#"]'); if (!a || a.hasAttribute('data-sk-behaviour')) return; var id = decodeURIComponent(a.getAttribute('href').slice(1)); if (id.length < 1 || id.charAt(0) === '/') return; var t = by(id); if (!t) return; e.preventDefault(); var off = hd.length ? hd[0].getBoundingClientRect().height : 0; scrollTo({ top: t.getBoundingClientRect().top + scrollY - off, behavior: 'smooth' }); history.replaceState(null, '', '#' + id); });
+  d.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeLb(); $('[data-sk-behaviour=modal]').forEach(function (o) { shut(tgt(o)); }); } });
+}
+var SK_BEHAVIOUR_CSS = '[data-sk-behaviour=menu][data-sk-open],[data-sk-behaviour=menu]{cursor:pointer}[data-sk-panel][data-sk-open]:not([data-sk-behaviour]){display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;max-height:none!important}' +
+  '[data-sk-behaviour=accordion]{cursor:pointer}[hidden]{display:none!important}' +
+  '.sk-js [data-sk-behaviour=reveal].sk-pre:not(.sk-in){opacity:0!important;transform:translateY(24px)!important}.sk-js [data-sk-behaviour=reveal].sk-pre{transition:opacity .7s ease,transform .7s ease!important}.sk-js [data-sk-behaviour=reveal].sk-in{opacity:1!important;transform:none!important}' +
+  '.sk-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:2147483000}.sk-lightbox.sk-on{display:flex}.sk-lightbox img{max-width:92vw;max-height:90vh;object-fit:contain}.sk-lightbox button{position:absolute;top:14px;right:18px;background:none;border:0;color:#fff;font-size:34px;cursor:pointer}' +
+  '.sk-formnote{margin-top:10px;font:14px/1.4 system-ui,sans-serif}.sk-formnote.sk-bad{color:#b00020}.sk-formnote.sk-ok{color:#1b7f3b}.sk-invalid{outline:2px solid #b00020!important}.sk-stuck{box-shadow:0 2px 14px rgba(0,0,0,.18)}html{scroll-behavior:smooth}';
+
+// makeExtractor(doc, win): render-based part extractor. It runs on Site Kit's OWN segments (same part boundaries and numbering),
+// so a part here is the same part there. Self-contained on purpose: it is also injected as text into sandboxed script frames.
+//   ex.flatten()              -> the page's CSS, flattened once per site
+//   ex.build(seg, id, G)      -> { html, css, tokens, slots, motion, risks, sample, stats }   for seg = { roots:[el], chain:[el], kind }
+function makeExtractor(doc, win) {
+  const cs = e => win.getComputedStyle(e);
+  // one canonical form per colour, so "#2a7fff", "rgb(42, 127, 255)" and "rgba(42,127,255,1)" are recognised as the same colour (a dial must reach every spelling of it)
+  const famKey = s => String(s).split(',').map(x => x.trim().replace(/^["']|["']$/g, '').toLowerCase()).join(',');
+  let cv = null; try { cv = doc.createElement('canvas').getContext('2d'); } catch (e) {}
+  const canonCache = new Map();
+  const canon = c => { if (canonCache.has(c)) return canonCache.get(c); let r = c; if (cv) { try { cv.fillStyle = '#000000'; cv.fillStyle = c; const f = cv.fillStyle; r = f[0] === '#' ? [1, 3, 5].map(i => parseInt(f.substr(i, 2), 16)).join(',') + ',1' : (f.match(/[\d.]+/g) || []).slice(0, 4).join(','); if (r.split(',').length === 3) r += ',1'; } catch (e) {} } canonCache.set(c, r); return r; };
+  const SKIP = /^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|LINK|META)$/;
+  /* ---- 1. flatten the CSSOM once ---- */
+  function flatten() {
+    const rules = [], faces = [], keyframes = {}, props = []; let invalid = 0;
+    const walk = (list, ctx) => { for (const r of list) {
+      if (r.type === 1) rules.push({ sel: r.selectorText, decl: r.style.cssText, ctx });
+      else if (r.type === 5) faces.push(r);
+      else if (r.type === 7) keyframes[r.name] = r;
+      else if (r.constructor.name === 'CSSPropertyRule') props.push(r);
+      else if (r.cssRules && (r.type === 4 || r.type === 12 || r.constructor.name.match(/Media|Supports|Container|Layer/))) walk(r.cssRules, ctx.concat(r.cssText.slice(0, r.cssText.indexOf('{')).trim()));
+    } };
+    for (const sh of doc.styleSheets) { try { walk(sh.cssRules, []); } catch (e) { invalid++; } }
+    return { rules, faces, keyframes, props, blocked: invalid };
+  }
+  const splitSel = s => { const o = []; let d = 0, c = '', q = ''; for (let i = 0; i < s.length; i++) { const ch = s[i]; if (ch === '\\') { c += ch + (s[i + 1] || ''); i++; continue; } if (q) { if (ch === q) q = ''; c += ch; continue; } if (ch === '"' || ch === "'") { q = ch; c += ch; continue; } if ('(['.includes(ch)) d++; if (')]'.includes(ch)) d--; if (ch === ',' && !d) { o.push(c.trim()); c = ''; } else c += ch; } if (c.trim()) o.push(c.trim()); return o; };
+  const DYN = /(?<!\\)::?[\w-]+(\([^)]*\))?/g, KEEP_PSEUDO = /^:(is|not|where|has|nth-[\w-]+|first-child|last-child|only-child|first-of-type|last-of-type|root|empty|checked|disabled|enabled|lang|dir)$/;
+  const baseOf = sel => { let s = sel.replace(DYN, (m, _, off) => KEEP_PSEUDO.test(m.replace(/\(.*$/, '')) ? m : ''); s = s.trim(); return (!s || /[>+~]$/.test(s)) ? s + '*' : s; };
+  /* ---- 2. scoping ---- */
+  function scopeSel(sel, id, rootCls) {
+    let s = sel.replace(/(^|[\s>+~(,])(html|body|:root)(?![\w-])/g, '$1#' + id).replace(/(#sk-\d+)(\s*[>+~]?\s*)#sk-\d+/g, '$1');
+    if (/^\s*\*/.test(s) || /^#sk-\d+$/.test(s.trim())) s = s.replace(/^\s*\*/, '#' + id + ' *');
+    if (s.includes('#' + id)) return s;
+    // classes that lived on <html>/<body> now sit on the scope root, so `.w-mod-js .x` must also match as `#sk.w-mod-js .x`
+    const lead = (s.trim().match(/^((?:\.[\w-]+)+)/) || [])[1];
+    const same = lead && lead.slice(1).split('.').every(c => rootCls.has(c)) ? ',#' + id + s.trim() : '';
+    return '#' + id + ' ' + s + same;
+  }
+  const wrapCtx = (ctx, body) => ctx.reduceRight((acc, c) => c + '{' + acc + '}', body);
+  const fam = s => s.split(',').map(x => x.trim().replace(/^["']|["']$/g, '').toLowerCase());
+  const firstFam = s => s.split(',')[0].trim().replace(/^["']|["']$/g, '');
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  /* ---- 3. one part -> html + its own css ---- */
+  function build(seg, n, G) {
+    const id = 'sk-' + n, roots = seg.roots, root = roots[0], chain = seg.chain, anc = chain.concat(doc.body, doc.documentElement);
+    const open = e => { const o = e.cloneNode(false).outerHTML; return o.slice(0, o.length - ('</' + e.localName + '>').length); };
+    roots.forEach(r => r.setAttribute('data-skpart', ''));
+    const body = chain.map(open).join('') + roots.map(r => r.outerHTML).join('\n') + chain.slice().reverse().map(e => '</' + e.localName + '>').join('');
+    roots.forEach(r => r.removeAttribute('data-skpart'));
+    const rootCls = new Set((doc.documentElement.className + ' ' + doc.body.className).split(/\s+/).filter(Boolean));
+    const m = new Map(); const test = sel => { if (m.has(sel)) return m.get(sel); let r = 0; try { const b = baseOf(sel); r = roots.some(x => x.matches(b) || x.querySelector(b)) ? 1 : (anc.some(a => a.matches(b)) ? 2 : 0); } catch (e) { r = -1; } m.set(sel, r); return r; };
+    const stats = { rulesKept: 0, rulesTotal: G.rules.length, invalidSel: 0, media: 0 }; let keptText = '';
+    const seq = [];
+    for (const r of G.rules) {
+      const sels = splitSel(r.sel).filter(s => { const t = test(s); if (t === -1) stats.invalidSel++; return t > 0; });
+      if (!sels.length) continue;
+      stats.rulesKept++; if (r.ctx.some(c => /^@media/.test(c))) stats.media++;
+      let decl = r.decl;
+      // rem is relative to <html>, which a scoped part doesn't have: carry html's font-size as --sk-rem
+      if (splitSel(r.sel).some(x => /^(html|:root)$/.test(x.trim())) && /(^|;)\s*font-size\s*:/.test(decl)) { const v = (decl.match(/(?:^|;)\s*font-size\s*:\s*([^;]+)/) || [])[1]; if (v) { const fix = x => x.replace(/(-?\d*\.?\d+)rem\b/g, 'calc($1 * 16px)'); decl = decl.replace(/((?:^|;)\s*font-size\s*:\s*)([^;]+)/, (m, a, b) => a + fix(b)); decl += ' --sk-rem: ' + (/%\s*$/.test(v) ? 'calc(16px * ' + parseFloat(v) / 100 + ')' : fix(v.replace(/\s*!important/, ''))) + ';'; } }
+      const key = r.ctx.join('\u0001'), last = seq[seq.length - 1];
+      const piece = sels.map(s => scopeSel(s, id, rootCls)).join(',') + '{' + decl + '}\n';
+      if (last && last.key === key) last.txt += piece; else seq.push({ key, ctx: r.ctx, txt: piece });
+      keptText += r.decl + ' ';
+    }
+    // elements of this part, in document order; the same order is used again when the copy is checked against the original
+    const els = roots.flatMap(r => [r, ...r.querySelectorAll('*')]);
+    const fams = new Set();
+    els.slice(0, 4000).concat(chain).forEach(e => fam(cs(e).fontFamily).forEach(f => fams.add(f)));
+    const faces = G.faces.filter(f => fams.has(fam(f.style.getPropertyValue('font-family'))[0]));
+    const anims = [...(keptText.match(/animation[^:;]*:[^;]+/g) || [])].join(' ');
+    const kfNames = Object.keys(G.keyframes).filter(k => new RegExp('(^|[\\s,:])' + esc(k) + '(?=[\\s,;]|$)').test(anims));
+    let css = '#' + id + '{--sk-rem:16px}\n' + seq.map(g => wrapCtx(g.ctx, g.txt)).join('\n');
+    css = css.replace(/\{[^{}]*\}/g, b => b.replace(/(-?\d*\.?\d+)rem\b/g, 'calc($1 * var(--sk-rem))'));
+    // rename keyframes so parts from different sites can't collide
+    const kfCss = kfNames.map(k => G.keyframes[k].cssText.replace(k, id + '_' + k)).join('\n');
+    kfNames.forEach(k => { css = css.replace(/animation[^:;{}]*:[^;}]+/g, d => d.replace(new RegExp('(^|[\\s,:])' + esc(k) + '(?=[\\s,;]|$)', 'g'), '$1' + id + '_' + k)); });
+    const usedVars = new Set((css.match(/var\(--[\w-]+/g) || []).map(v => v.slice(4)));
+    const faceCss = faces.map(f => f.cssText).join('\n') + '\n' + G.props.filter(p => usedVars.has(p.name)).map(p => p.cssText).join('\n');
+    const vars = new Set((css.match(/var\(--[\w-]+/g) || []).map(v => v.slice(4))); const defd = new Set((css.match(/--[\w-]+(?=\s*:)/g) || []).concat(G.props.map(p => p.name), ['--sk-rem']));
+    const unresolved = [...vars].filter(v => !defd.has(v));
+    const T = tokenize(css, els, chain);
+    const slots = findSlots(roots, els);
+    const all = sel => roots.flatMap(r => [...r.querySelectorAll(sel)]);
+    const motion = { dataW: all('[data-w-id]').length + roots.filter(r => r.hasAttribute('data-w-id')).length, aos: all('[data-aos]').length, scrollAttr: all('[data-scroll],[data-speed],[data-lag]').length,
+      keyframes: kfNames, transitions: (css.match(/transition(-property)?\s*:/g) || []).length, animationDecls: (anims.match(/animation/g) || []).length, lottie: all('[data-animation-type="lottie"],lottie-player').length,
+      slider: all('.swiper,.swiper-container,[class*="slick-slider"],[class*="carousel"],[class*="splide"]').length, video: all('video').length };
+    const bcs = cs(doc.body), hcs = cs(doc.documentElement);
+    const bg = [bcs.backgroundColor, hcs.backgroundColor].find(c => c && c !== 'rgba(0, 0, 0, 0)') || '#fff';
+    const scopeCls = (doc.documentElement.className + ' ' + doc.body.className).trim();
+    const inlineVars = [doc.documentElement, doc.body].map(e => [...e.style].filter(n => n.startsWith('--')).map(n => n + ':' + e.style.getPropertyValue(n)).join(';')).join(';');
+    const html = '<div id="' + id + '" class="' + scopeCls + '" style="margin:' + bcs.margin + ';' + inlineVars.replace(/"/g, '&quot;') + '">' + body + '</div>';
+    const rects = roots.map(r => r.getBoundingClientRect()), base = { left: Math.min(...rects.map(r => r.left)), top: Math.min(...rects.map(r => r.top)), bottom: Math.max(...rects.map(r => r.bottom)) };
+    // geometry sample: where every element sat, relative to the part's own top-left. The copy is later compared against this.
+    const countable = els.filter(e => !SKIP.test(e.tagName) && !e.closest('noscript,template'));
+    // elements that are (or sit inside something) transformed or mid-animation are marked: their boxes are not stable, so they are not compared
+    const tfMap = new Map(), inPart = e => roots.some(r => r.contains(e));
+    const tf = e => { if (tfMap.has(e)) return tfMap.get(e); const t = cs(e).transform, p = e.parentElement; const v = (t && t !== 'none') || (p && inPart(p) && tf(p)); tfMap.set(e, !!v); return !!v; };
+    const sample = countable.slice(0, 600).map(e => { const r = e.getBoundingClientRect(), s = cs(e); return [Math.round(r.left - base.left), Math.round(r.top - base.top), Math.round(r.width), Math.round(r.height), s.color, s.backgroundColor, s.fontSize, tf(e) ? 1 : 0]; });
+    return { id, tag: root.localName, cls: (root.getAttribute('class') || '').slice(0, 60), html, css: T.css, keyframes: kfCss, fontFaces: faceCss, pageBg: bg,
+      tokens: T.tokens, slots, motion, risks: risksOf(roots, els, seg, countable), sample, nEls: countable.length, height: Math.round(base.bottom - base.top),
+      stats: Object.assign(stats, { cssBytes: T.css.length, fontFaces: faces.length, keyframes: kfNames.length, unresolvedVars: unresolved, tokenCoverage: T.coverage, swappable: T.swappable, fontCoverage: T.fontCoverage,
+        fontDecls: T.fontDecls, fontWired: T.fontWired, fontShort: T.fontShort, fontHard: T.fontHard, htmlBytes: html.length }) };
+  }
+  /* ---- 4. things that stop a standalone copy from matching the original. Each one is a reason to call the part "approximate" ---- */
+  function risksOf(roots, els, seg, countable) {
+    const out = [], cap = els.slice(0, 3000);
+    if (seg.kind === 'overlay') out.push('Popup or fixed layer: it is pinned to the screen, so the copy was not compared pixel for pixel');
+    const sizeOf = e => { const r = e.getBoundingClientRect(); return r.width * r.height; };
+    const fixed = cap.filter(e => !roots.includes(e) && cs(e).position === 'fixed' && sizeOf(e) > 1);
+    if (fixed.length) out.push('Contains a fixed layer (' + fixed.length + '), such as a pinned menu or a background video, that will not stay put outside its page');
+    let p = roots[0].parentElement, fixedAnc = false;
+    while (p && !fixedAnc) { if (cs(p).position === 'fixed') fixedAnc = true; p = p.parentElement; }
+    if (fixedAnc) out.push('Sits inside a fixed layer on the original page, so its position is not its own');
+    const lazy = cap.filter(e => e.localName === 'img' && (e.hasAttribute('data-src') || e.hasAttribute('data-lazy-src') || e.hasAttribute('data-original') || e.hasAttribute('data-srcset') || (e.getAttribute('loading') === 'lazy' && (!e.getAttribute('src') || /^data:image\/(gif|svg)/.test(e.getAttribute('src') || '') && e.getAttribute('src').length < 400))));
+    if (lazy.length) out.push('Images that load later (' + lazy.length + '), so the copy may show blanks where they go');
+    const media = cap.filter(e => /^(video|iframe|canvas|object|embed)$/.test(e.localName));
+    if (media.length) out.push('Video, embed or canvas content (' + media.length + ') that a copy cannot play');
+    return out;
+  }
+  /* ---- 5. tokens: turn literal colours/fonts into swappable variables ---- */
+  function tokenize(css, els, chain) {
+    const masks = []; let work = css.replace(/url\((?:[^()"']|"[^"]*"|'[^']*')*\)/g, m => { masks.push(m); return '\u0002' + (masks.length - 1) + '\u0003'; });
+    const re = /rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-fA-F]{3,8}\b/g, freq = new Map();
+    for (const b of work.match(/\{[^{}]*\}/g) || []) for (const c of b.match(re) || []) freq.set(c, (freq.get(c) || 0) + 1);
+    const textW = new Map(), bgW = new Map();
+    for (const e of els.slice(0, 3000)) { const s = cs(e), r = e.getBoundingClientRect(); const own = [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.nodeValue.trim()).join('').length;
+      if (own) textW.set(s.color, (textW.get(s.color) || 0) + own); if (s.backgroundColor !== 'rgba(0, 0, 0, 0)') bgW.set(s.backgroundColor, (bgW.get(s.backgroundColor) || 0) + r.width * r.height); }
+    const top = m => [...m.entries()].sort((a, b) => b[1] - a[1])[0]; const names = new Map(), disp = new Map(); const t = top(textW), g = top(bgW);
+    const nameIt = (c, n) => { const k0 = canon(c); names.set(k0, n); if (!disp.has(k0)) disp.set(k0, c); };
+    if (g) nameIt(g[0], 'sk-bg'); if (t) nameIt(t[0], 'sk-text');
+    const sat = c => { const m = canon(c).split(',');  if (!m || m.length < 3) return 0; const [r, g2, b] = m.slice(0, 3).map(Number), mx = Math.max(r, g2, b), mn = Math.min(r, g2, b); return mx ? (mx - mn) / mx : 0; };
+    const ranked = [...freq.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]); let k = 1;
+    const accent = ranked.find(c => !names.has(canon(c)) && sat(c) > 0.35 && +canon(c).split(',')[3] > 0.5); if (accent) nameIt(accent, 'sk-accent');
+    for (const c of ranked) { if (names.size >= 8) break; if (!names.has(canon(c))) nameIt(c, 'sk-c' + k++); }
+    let total = 0, tokd = 0;
+    work = work.replace(/\{[^{}]*\}/g, b => b.replace(re, c => { total++; if (names.has(canon(c))) { tokd++; return 'var(--' + names.get(canon(c)) + ',' + c + ')'; } return c; }));
+    // fonts
+    const hd = els.find(e => /^H[1-3]$/.test(e.tagName)), pp = els.find(e => e.tagName === 'P') || els.find(e => cs(e).fontFamily);
+    const fd = hd && cs(hd).fontFamily, fb = pp && cs(pp).fontFamily; let fTotal = 0, fTok = 0;
+    const fvars = new Set(), hard = new Set();
+    work = work.replace(/font-family\s*:\s*([^;}]+)/g, (m, v) => { fTotal++; const vv = v.trim(); const vm = vv.match(/^var\((--[\w-]+)/); if (vm) { fTok++; fvars.add(vm[1]); return m; } if (fd && famKey(vv) === famKey(fd)) { fTok++; return 'font-family: var(--sk-font-display, ' + vv + ')'; } if (fb && famKey(vv) === famKey(fb)) { fTok++; return 'font-family: var(--sk-font-body, ' + vv + ')'; }
+      const f1 = firstFam(vv); if (!/^(inherit|initial|unset|revert)$/i.test(f1)) hard.add(f1); return m; });
+    // the `font:` shorthand carries a family too. It can't be swapped through a variable yet, so it counts as NOT wired (it used to be invisible here)
+    let fShort = 0;
+    for (const mm of work.matchAll(/(?:^|[;{\s])font\s*:\s*([^;}]+)/g)) {
+      const fm = mm[1].replace(/!important/, '').trim().match(/\d[\w.%]*(?:\/[\w.%]+)?\s+(.+)$/); if (!fm) continue;
+      fTotal++; fShort++; if (/var\(/.test(fm[1])) fTok++; else { const f1 = firstFam(fm[1]); if (!/^(inherit|initial|unset|revert)$/i.test(f1)) hard.add(f1); }
+    }
+    const radii = {}; els.slice(0, 2000).forEach(e => { const v = cs(e).borderTopLeftRadius; if (v !== '0px') radii[v] = (radii[v] || 0) + 1; });
+    const sizes = {}; els.slice(0, 2000).forEach(e => { if ([...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) { const v = cs(e).fontSize; sizes[v] = (sizes[v] || 0) + 1; } });
+    const topN = (o, n) => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, n).map(e => e[0]);
+    const css2 = work.replace(/\u0002(\d+)\u0003/g, (m, i) => masks[+i]);
+    const tokens = { colors: Object.fromEntries([...names.entries()].map(([c, n]) => [n, disp.get(c)])), fonts: { display: fd || null, body: fb || null, vars: [...fvars] }, radii: topN(radii, 3), sizes: topN(sizes, 5), headingSize: hd ? cs(hd).fontSize : null, bodySize: pp ? cs(pp).fontSize : null };
+    const colorVars = {}; let swap = 0, hardC = 0;
+    for (const b of css2.match(/\{[^{}]*\}/g) || []) {
+      for (const m of b.matchAll(/(--[\w-]+)\s*:\s*(rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-fA-F]{3,8}\b)/g)) colorVars[m[1]] = m[2];
+      for (const m of b.matchAll(/(?:^|[;{\s])(color|background(?:-color|-image)?|border(?:-[a-z]+)?(?:-color)?|fill|stroke|outline(?:-color)?|text-decoration-color|caret-color)\s*:\s*([^;}]+)/g)) { const v = m[2]; if (/var\(--/.test(v)) swap++; else if (/rgba?\(|hsla?\(|#[0-9a-fA-F]{3,8}\b/.test(v)) hardC++; }
+    }
+    tokens.colorVars = colorVars;
+    return { css: css2, tokens, swappable: swap + hardC ? swap / (swap + hardC) : 1, coverage: total ? tokd / total : 1, fontCoverage: fTotal ? fTok / fTotal : 1, fontDecls: fTotal, fontWired: fTok, fontShort: fShort, fontHard: [...hard].slice(0, 8), colorLiterals: total };
+  }
+  /* ---- 6. slots: the editable fields ---- */
+  function findSlots(roots, els) {
+    const txt = e => (e.textContent || '').replace(/\s+/g, ' ').trim();
+    const all = sel => roots.flatMap(r => [...r.querySelectorAll(sel)]);
+    const heads = all('h1,h2,h3,h4').map(txt).filter(Boolean).slice(0, 4).map(t => t.slice(0, 160));
+    // stable positions: where each editable element sits among ALL elements of its kind in the part, in document order.
+    // Edits address elements by these positions (never by matching their text), so identical wording in several places is no problem.
+    const ords = (list, keep) => { const o = []; list.forEach((e, i) => { if (keep(e)) o.push(i); }); return o; };
+    const headEls = all('h1,h2,h3,h4'), paraEls = all('p'), linkEls = all('a[href],button'), imgEls = all('img');
+    const headOrd = ords(headEls, e => txt(e)).slice(0, 12), paraOrd = ords(paraEls, e => txt(e)).slice(0, 12);
+    const paras = all('p').map(txt).filter(Boolean);
+    const btns = all('a[href],button').filter(a => { const t = txt(a); return t && t.length <= 28 && (/btn|button|cta/i.test(a.className) || a.tagName === 'BUTTON' || cs(a).backgroundColor !== 'rgba(0, 0, 0, 0)'); }).slice(0, 4).map(a => ({ label: txt(a), href: a.getAttribute('href') || null, ord: linkEls.indexOf(a) }));
+    let rep = 0, repEl = null, repKey = null;
+    for (const p of els.slice(0, 1500)) { const kids = [...p.children]; if (kids.length >= 3) { const g = {}; const key = c => c.localName + '.' + (c.className + '').split(' ')[0]; kids.forEach(c => { const k = key(c); g[k] = (g[k] || 0) + 1; }); const mx = Math.max(...Object.values(g)); if (mx > rep) { rep = mx; repEl = p; repKey = Object.keys(g).find(k => g[k] === mx); } } }
+    // where a path of child positions leads from a part's root to an element (used later to find it again in the copy)
+    const pathOf = el => { const a = []; let n = el; while (n && !roots.includes(n)) { const p = n.parentElement; if (!p) return null; a.unshift([...p.children].indexOf(n)); n = p; } return n ? [roots.indexOf(n), ...a] : null; };
+    let cardInfo = null;
+    if (repEl && rep >= 3 && rep <= 24) { const key = c => c.localName + '.' + (c.className + '').split(' ')[0], kids = [...repEl.children], idx = kids.map((c, k) => key(c) === repKey ? k : -1).filter(k => k >= 0), path = pathOf(repEl);
+      if (path && idx.length === rep) cardInfo = { path, idx, labels: idx.map(k => { const w = doc.createTreeWalker(kids[k], 4), parts = []; let n; while ((n = w.nextNode())) { const v = n.nodeValue.replace(/\s+/g, ' ').trim(); if (v && !/^(STYLE|SCRIPT|NOSCRIPT)$/.test(n.parentNode.nodeName)) parts.push(v); } return parts.join(' ').slice(0, 48) || '(picture)'; }) }; }
+    // the biggest background picture or gradient (flat colours are the Background dial's job)
+    let bgLayer = null, bgArea = 0;
+    for (const e of els.slice(0, 800)) { const bi = cs(e).backgroundImage; if (!bi || bi === 'none') continue; const r = e.getBoundingClientRect(), a = r.width * r.height; if (a <= bgArea || a < 4000) continue; const p = pathOf(e); if (!p) continue;
+      const kind = /gradient/.test(bi) ? 'gradient' : /url\(/.test(bi) ? 'image' : null; if (!kind) continue; bgArea = a; bgLayer = { kind, path: p, colors: (bi.match(/rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}\b/g) || []).slice(0, 4), angle: +((bi.match(/(-?\d+(?:\.\d+)?)deg/) || [])[1] || 180), src: kind === 'image' ? ((bi.match(/url\(["']?([^"')]+)/) || [])[1] || null) : null }; }
+    const imgs = all('img'), firstImg = imgs.find(i => (i.getAttribute('src') || '') && !/^data:image\/(gif|svg)/.test(i.getAttribute('src')) && !i.hasAttribute('data-src'));
+    const okSrc = i => (i.getAttribute('src') || '') && !/^data:image\/(gif|svg)/.test(i.getAttribute('src')) && !i.hasAttribute('data-src');
+    return { headAll: all('h1,h2,h3,h4').map(txt).filter(Boolean).slice(0, 12).map(t => t.slice(0, 2000)), paraAll: paras.slice(0, 12).map(t => t.slice(0, 4000)), imgAll: imgs.filter(okSrc).slice(0, 12).map(i => i.getAttribute('src')), imgOrd: imgs.map((i, k) => okSrc(i) ? k : -1).filter(k => k >= 0).slice(0, 12), headOrd, paraOrd, cardInfo, bgLayer, headFull: (all('h1,h2,h3,h4').map(txt).filter(Boolean)[0] || '').slice(0, 2000), paragraphFull: (paras[0] || '').slice(0, 4000), imageSrc: firstImg ? firstImg.getAttribute('src') : null, headings: heads, paragraphs: all('p').length, paragraphFirst: (paras[0] || '').slice(0, 160), buttons: btns, images: all('img,picture').length, svgs: all('svg').length,
+      bgImages: els.slice(0, 800).filter(e => /url\(/.test(cs(e).backgroundImage)).length, cards: rep, forms: all('form,input,textarea').length };
+  }
+  return { flatten, build };
+}
+
+
+
+function openTagOf(el) {
+  const c = el.cloneNode(false).outerHTML;           // "<div class=x></div>"
+  return c.slice(0, c.length - ('</' + el.localName + '>').length);
+}
+
+function segmentCore(doc, win) {
+  const vh = win.innerHeight;
+  let pageH = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight, 1);
+  // pages that scroll inside their own box (not the window): use that box's content height
+  Array.from(doc.body.querySelectorAll('*')).slice(0, 6000).forEach(e => {
+    if (e.scrollHeight > pageH && e.clientHeight >= 0.5 * vh && win.getComputedStyle(e).overflowY !== 'visible') pageH = e.scrollHeight;
+  });
+  const items = [];
+  const refs = {};                // item id -> the real elements (never posted anywhere: elements cannot be cloned)
+  const chainEl = {};             // chain key -> its element
+  const kindCache = new Map();
+  let uid = 0;
+
+  const rect = el => el.getBoundingClientRect();
+  function kindOf(el) {
+    if (kindCache.has(el)) return kindCache.get(el);
+    let k;
+    if (NONVIS.has(el.tagName)) k = 'code';
+    else {
+      const cs = win.getComputedStyle(el), r = rect(el);
+      if (cs.display === 'none') k = 'hidden';
+      else if (cs.position === 'fixed') k = r.width * r.height > 1 ? 'overlay' : 'hidden';
+      else if (cs.position === 'absolute' && r.height < 0.8 * pageH) k = r.width * r.height > 1 ? 'overlay' : 'hidden';
+      else k = r.height < 1 ? 'hidden' : 'flow';
+    }
+    kindCache.set(el, k); return k;
+  }
+  const flowKids = el => Array.from(el.children).filter(c => kindOf(c) === 'flow');
+
+  // Would splitting INSIDE this element give real, stacked, full-width bands?
+  function descendable(el, depth) {
+    if (depth > 12) return null;
+    let n = el;
+    for (;;) {
+      const f = flowKids(n);
+      if (f.length === 0) return null;
+      if (f.length === 1) { if (rect(f[0]).height < 0.9 * rect(n).height) return null; n = f[0]; continue; }
+      if (Math.max(rect(el).height, el.scrollHeight) <= 1.2 * vh) return null;
+      const nr = rect(n), rs = f.map(rect).sort((a, b) => a.top - b.top);
+      let overlap = 0, covered = 0, wide = 0;
+      rs.forEach((r, i) => {
+        covered += r.height; if (r.width >= 0.6 * nr.width) wide++;
+        if (i && r.top < rs[i - 1].bottom - 0.3 * Math.min(r.height, rs[i - 1].height)) overlap++;
+      });
+      const stacked = overlap === 0 && covered >= 0.7 * nr.height;
+      if (stacked && wide >= 0.7 * f.length) return { mode: 'bands', n };
+      if (stacked && f.length >= 6) return { mode: 'flat', n };      // long flat run of blocks (e.g. WordPress): group into sections
+      return null;
+    }
+  }
+
+  function walk(parent, chain, depth) {
+    const here = chain;
+    for (const el of Array.from(parent.children)) {
+      const k = kindOf(el);
+      if (k === 'code') { items.push({ id: uid++, kind: 'code', chain: here, html: el.outerHTML }); continue; }
+      if (k === 'hidden') { items.push({ id: uid++, kind: 'glue', chain: here, html: el.outerHTML }); continue; }
+      if (k === 'overlay') { items.push(makeModule(el, here, 'overlay')); continue; }
+      // flow
+      const d = descendable(el, depth);
+      if (d) {
+        const ck = 'n' + (uid++); chainEl[ck] = el;
+        const ch = here.concat([{ key: ck, open: openTagOf(el), close: '</' + el.localName + '>' }]);
+        if (d.mode === 'flat' && d.n === el) walkFlat(el, ch); else walk(el, ch, depth + 1);
+      } else {
+        const m = makeModule(el, here, 'module');
+        if (m.height < 40 && !m.features.words && !m.features.imgs) m.kind = 'glue';
+        items.push(m);
+      }
+    }
+  }
+
+  // Group consecutive small blocks into sections; big full-width blocks and spacers act as dividers.
+  function walkFlat(parent, chain) {
+    const pw = rect(parent).width; let group = [];
+    const flush = () => {
+      if (!group.length) return;
+      const rs = group.map(rect), top = rs[0].top, bottom = Math.max(...rs.map(r => r.bottom));
+      const wrap = doc.createElement('div'); group.forEach(g => wrap.append(g.cloneNode(true)));
+      const syn = { top, bottom, height: bottom - top, width: Math.max(...rs.map(r => r.width)) };
+      const f = features(wrap, syn, 'module', pageH, vh);
+      const it = { id: uid++, kind: 'module', chain, html: group.map(g => g.outerHTML).join('\n'), tag: 'div', top: Math.round(top), height: Math.round(syn.height), width: Math.round(syn.width), features: f, role: null, conf: 0 };
+      if (it.height < 40 && !f.words && !f.imgs) it.kind = 'glue';
+      refs[it.id] = { roots: group.slice(), chain: chain.map(c => chainEl[c.key]), kind: 'module' };
+      items.push(it); group = [];
+    };
+    for (const el of Array.from(parent.children)) {
+      const k = kindOf(el);
+      if (k === 'code') { items.push({ id: uid++, kind: 'code', chain, html: el.outerHTML }); continue; }
+      if (k === 'hidden') { items.push({ id: uid++, kind: 'glue', chain, html: el.outerHTML }); continue; }
+      if (k === 'overlay') { items.push(makeModule(el, chain, 'overlay')); continue; }
+      const r = rect(el), hasText = (el.textContent || '').trim().length > 0, hasMedia = !!el.querySelector('img,svg,video,picture,iframe') || /^(img|svg|video|picture|iframe)$/.test(el.localName);
+      if (!hasText && !hasMedia && r.height >= 50 || el.localName === 'hr') { flush(); items.push({ id: uid++, kind: 'glue', chain, html: el.outerHTML }); continue; }
+      if (r.width >= 0.9 * pw && r.height >= 0.3 * vh) { flush(); items.push(makeModule(el, chain, 'module')); continue; }
+      if (group.length) {
+        const gTop = rect(group[0]).top, startsSection = el.matches('h1,h2') || !!el.querySelector(':scope > h1, :scope > h2');
+        if ((startsSection && r.top - gTop > 220) || r.bottom - gTop > 1.5 * vh) flush();
+      }
+      group.push(el);
+    }
+    flush();
+  }
+
+  function makeModule(el, chain, kind) {
+    const r = rect(el), f = features(el, r, kind, pageH, vh);
+    const it = { id: uid++, kind, chain, html: el.outerHTML, tag: el.localName, top: Math.round(r.top), height: Math.round(r.height),
+             width: Math.round(r.width), features: f, role: null, conf: 0 };
+    refs[it.id] = { roots: [el], chain: chain.map(c => chainEl[c.key]), kind };
+    return it;
+  }
+
+  walk(doc.body, [], 0);
+  return { items, pageH, refs };
+}
+function classifyAll(items, pageH, vh) {
+  const mods = items.filter(i => i.kind === 'module' || i.kind === 'overlay');
+  const out = classifyV2(mods, pageH);                  // also keeps only one "hero" per page
+  mods.forEach((m, i) => { m.role = out[i].role; m.conf = out[i].conf; m.scores = out[i].scores; });
+}
+function segmentDocument(doc, win) { const r = segmentCore(doc, win); classifyAll(r.items, r.pageH, win.innerHeight); return r; }
+const isSure = m => !!m.userSet || m.conf >= SURE_AT;   // "sure" = confident enough, or the person set it themselves
+
+function features(el, r, kind, pageH, vh) {
+  const attr = n => (el.getAttribute(n) || '');
+  const name = (el.id + ' ' + attr('class') + ' ' + attr('role') + ' ' + attr('aria-label') + ' ' + attr('data-name')).toLowerCase();
+  const tw = el.ownerDocument.createTreeWalker(el, 4, { acceptNode: n => /^(STYLE|SCRIPT|NOSCRIPT|TEMPLATE)$/.test(n.parentNode.nodeName) ? 2 : 1 });
+  let raw = ''; for (let n = tw.nextNode(); n; n = tw.nextNode()) raw += n.nodeValue + ' ';
+  const text = raw.replace(/\s+/g, ' ').trim();
+  const q = s => el.querySelectorAll(s).length;
+  // repeated sibling pattern (cards): BFS a few levels, find parent with most look-alike children
+  let rep = 0, repImg = 0, repSvg = 0, nodes = 0, shortNums = 0;
+  const queue = [[el, 0]];
+  while (queue.length && nodes < 1500) {
+    const [n, d] = queue.shift(); nodes++;
+    const kids = Array.from(n.children).filter(c => !NONVIS.has(c.tagName));
+    if (!kids.length && /^[\s\d.,]+\s*[%+kKmMx]?\+?$/.test(n.textContent || '') && /\d/.test(n.textContent)) shortNums++;
+    if (kids.length >= 3) {
+      const groups = {};
+      kids.forEach(c => { const k = c.localName + '.' + (c.getAttribute('class') || '').split(/\s+/)[0]; (groups[k] = groups[k] || []).push(c); });
+      for (const g of Object.values(groups)) if (g.length > rep) { rep = g.length; const ras = c => c.querySelector('img,picture,video') || /^(img|picture|video)$/.test(c.localName); repImg = g.filter(ras).length; repSvg = g.filter(c => !ras(c) && (c.querySelector('svg') || c.localName === 'svg')).length; }
+    }
+    if (d < 5) kids.forEach(c => queue.push([c, d + 1]));
+  }
+  let bg = 0;
+  try { const w = el.ownerDocument.defaultView; [el, ...Array.from(el.children).slice(0, 12)].forEach(n => { if (/url\(/.test(w.getComputedStyle(n).backgroundImage)) bg++; }); } catch (e) {}
+  const lowText = text.toLowerCase();
+  const quoted = /[“"„«]([^”"“»]{50,})[”"»]/.test(text);
+  return {
+    name, text, fields: q('textarea,input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=submit]):not([type=button]),select'), rasterImgs: q('img,picture,video'), bg, repSvg, quoted,
+    saysTestimonial: /what (our |my )?(clients|customers|patients|people|guests) (say|think)|testimonial|reviews?\b|hear from (our )?(clients|customers)/.test(lowText), words: text ? text.split(' ').length : 0, links: q('a[href]'), imgs: q('img,picture,video,svg'),
+    buttons: q('button,[class*="button"],[class*="btn"]'), forms: q('form,input,textarea,select'), headings: q('h1,h2,h3'),
+    h1: q('h1') > 0, quotes: q('blockquote'), details: q('details,[class*="accordion"]'),
+    mail: q('a[href^="mailto:"],a[href^="tel:"]'), price: (text.match(/[$€£]\s?\d/g) || []).length, questions: (text.match(/\?/g) || []).length,
+    rep, repImg, shortNums, copyright: /©|copyright/i.test(text),
+    moves: !!(el.matches('[data-w-id],[data-aos],[data-scroll]') || el.querySelector('[data-w-id],[data-aos],[data-scroll],[data-animation-type="lottie"]')),
+    fixedTop: kind === 'overlay' && r.top < 120 && r.width > 0.6 * 1440, tag: el.localName,
+    relTop: r.top / pageH, relBottom: r.bottom / pageH, h: r.height, vh
+  };
+}
+
+/* ---------- classifier (classify2: scoring + evidence-gated corrections; one shared SURE_AT threshold) ---------- */
+// classify2: Site Kit's scoring + evidence-gated corrections. Pure function of the feature object, so it runs in node or in the tool.
+const NAME_HINTS = {
+  nav: /\b(nav|navbar|menu|topbar|site-header|header)\b|navigation/, hero: /hero|jumbotron|masthead|banner|cover|intro|landing/,
+  footer: /footer/, contact: /contact|enquir|inquir|get-in-touch|reach/, gallery: /gallery|portfolio|project|work|case|showcase|listing|propert/,
+  features: /feature|service|offer|what-we|benefit|about|solution|story|craft|approach/, pricing: /pricing|plan|tier|price/,
+  testimonial: /testimonial|review|quote|social-proof|client/, team: /team|people|staff|crew|founder/, stats: /stat|counter|metric|number|figure/,
+  faq: /faq|accordion|question/, cta: /\bcta\b|call-to-action|subscribe|newsletter|signup|sign-up/, blog: /blog|news|journal|article|post|insight/
+};
+function scoreV2(m, ctx) {
+  const f = m.features || m.f, s = {}, add = (r, v) => { s[r] = (s[r] || 0) + v; };
+  const kind = m.kind, vh = f.vh, isOverlay = kind === 'overlay';
+  const heading = f.words <= 30 && f.h < 0.35 * vh && f.headings >= 1 && f.rep < 3;   // a title strip, not a section
+  const hasPeriod = /(\/|per\s)\s?(mo|month|yr|year)|\bplans?\b|\btiers?\b|billed/i.test(f.text);
+  for (const r in NAME_HINTS) if (NAME_HINTS[r].test(f.name)) {
+    if (r === 'hero' && f.h < 0.3 * vh) continue;
+    if (r === 'gallery' && !(f.rep >= 3 || f.imgs >= 2 || f.h >= 0.5 * vh)) continue;       // "work" in a heading row is not a gallery
+    if (r === 'features' && /about|story/.test(f.name) && f.rep < 3 && !/feature|service|offer|benefit|solution/.test(f.name)) { add('text', 3); continue; }   // about/story prose is text
+    add(r, r === 'nav' || r === 'hero' ? 3 : 4);
+  }
+  if (f.tag === 'footer') add('footer', 6);
+  if (f.tag === 'nav') add('nav', 5);
+  if (f.tag === 'header' && f.links >= 3 && f.h < 260) add('nav', 3);
+  if (f.links >= 3 && f.h < 240 && f.relTop < 0.05) add('nav', 4);
+  if (f.fixedTop && f.links >= 3) add('nav', 5);
+  if (f.fixedTop && f.links < 3 && f.h < 120) add('nav', 1);
+  if (f.relBottom > 0.97 && ctx.index >= ctx.count - 2 && f.words >= 4) { add('footer', 3); if (f.links >= 4) add('footer', 1); }
+  if (f.copyright) add('footer', 3);
+  if (f.h1) add('hero', f.h < 0.3 * vh ? 1 : 3);
+  if (f.relTop < 0.05 && f.h < 0.3 * vh && f.words <= 6 && !f.copyright) add('nav', 2);
+  if (f.h >= 0.5 * vh && f.relTop < 0.12 && f.words < 80) add('hero', 2);
+  if (f.relTop < 0.1 && f.h >= 0.35 * vh && f.headings >= 1) add('hero', 1);
+  if (f.fields >= 2) add('contact', 3);
+  if (f.mail) add('contact', 2);
+  if (f.rep >= 4 && f.repImg >= f.rep * 0.8) add('gallery', 4);
+  if (f.rep >= 3 && f.repImg < f.rep * 0.8 && f.words > 15) add('features', 2);
+  if (f.rep >= 3 && f.repSvg >= f.rep * 0.8) add('features', 3);
+  if (f.words <= 15 && (f.rasterImgs >= 1 || f.bg >= 1) && f.h >= 0.4 * vh && f.relTop > 0.08 && kind === 'module') add('gallery', f.words === 0 && f.rasterImgs === 0 ? 1 : 2);   // picture-only block; with no <img> at all it may just be a video/background
+  if (f.headings >= 3 && f.words > 40 && f.rep >= 2) add('features', 1);                  // v2: headings alone are not a feature grid
+  if (/^\s*0?\d{1,2}[.)]?\s+\p{L}/u.test(f.text) && f.words <= 80 && f.h < 1.2 * vh) add('features', 2);
+  if (f.price >= 2) {
+    if (hasPeriod) add('pricing', 3);                                                       // v2: prices need plan/period words…
+    else if (f.rep >= 3) add('gallery', 3);                                                  // …otherwise a priced grid is a product gallery
+  }
+  if (f.quotes) add('testimonial', 3);
+  if (f.quoted && f.words < 250) add('testimonial', 3);
+  if (f.saysTestimonial) add('testimonial', 3);
+  if (f.shortNums >= 3) add('stats', 4);
+  if (f.details >= 3) add('faq', 4);
+  if (f.questions >= 3) add('faq', 2);
+  if (f.words > 0 && f.words <= 45 && (f.buttons || f.links) && f.headings >= 1 && f.h < 0.9 * vh && f.relTop > 0.1 && !heading) add('cta', 3);
+  if (f.words > 0 && f.words <= 8 && f.buttons + f.links >= 1 && f.h < 160 && f.relTop > 0.1 && f.relBottom < 0.97 && kind === 'module') add('cta', 3);
+  if (heading) add('section', 3);                                                           // v2: title strips are their own thing
+  // v2: overlays. A full-screen or off-canvas layer that isn't a top bar is a popup/menu/loader, whatever it says.
+  if (isOverlay) {
+    const topBar = f.fixedTop && f.h < 0.35 * vh;
+    if (!topBar) add('overlay', 6); else add('overlay', 0);
+    if (!topBar) { delete s.nav; delete s.features; delete s.cta; delete s.hero; delete s.footer; }
+  }
+  if (!Object.keys(s).length && f.words > 40 && f.headings <= 2) add('text', 2);
+  return s;
+}
+function pickV2(s, f) {
+  const e = Object.entries(s).sort((a, b) => b[1] - a[1]); let best = 'section', bs = 0, second = 0;
+  if (e.length) { best = e[0][0]; bs = e[0][1]; second = e[1] ? e[1][1] : 0; }
+  if (bs < 2) { best = f.words > 40 ? 'text' : 'section'; }
+  // confidence from strength AND margin over the runner-up (v1 used strength only)
+  const conf = Math.max(0.15, Math.min(1, (bs / 6) * (bs ? (0.5 + 0.5 * Math.min(1, (bs - second) / Math.max(2, bs))) : 1)));
+  return { role: best, conf, scores: s };
+}
+function classifyV2(items, pageH) {
+  const mods = items; const out = mods.map((m, i) => pickV2(scoreV2(m, { index: i, count: mods.length, pageH }), m.features || m.f));
+  const heroes = out.map((o, i) => [o, i]).filter(([o]) => o.role === 'hero');
+  if (heroes.length > 1) { const keep = heroes.reduce((a, b) => (b[0].scores.hero > a[0].scores.hero ? b : a));
+    heroes.filter(h => h !== keep).forEach(([o, i]) => { const sc = Object.assign({}, o.scores); delete sc.hero; out[i] = pickV2(sc, mods[i].features || mods[i].f); }); }
+  return out;
+}
+// A guess is called "sure" only at or above this confidence. One constant, used by the tool and by the evaluation scripts.
+const SURE_AT = 0.8;
+
+
+/* ---------- motion hints (site level) ---------- */
+function siteMotion(html) {
+  const out = [];
+  if (/data-w-id|w-mod-ix/.test(html)) out.push('Webflow interactions');
+  if (/gsap|ScrollTrigger/i.test(html)) out.push('GSAP');
+  if (/lottie/i.test(html)) out.push('Lottie');
+  if (/lenis/i.test(html)) out.push('Smooth scroll');
+  if (/framer-motion|framer\.com/i.test(html)) out.push('Framer');
+  if (/@keyframes/.test(html)) out.push('CSS animation');
+  if (/data-aos|aos\.js/i.test(html)) out.push('AOS');
+  return out;
+}
+
+/* =====================================================================
+   3. LOADING A SITE: render it off-screen, measure, segment
+   ===================================================================== */
+const state = { export: { mode: 'iframes', behaviours: false }, sites: [], blocks: [], filter: 'all', query: '', device: 1440, anim: true, nextSite: 1, nextBlock: 1, notes: [] };
+const SITE_COLORS = ['#3b5bfd','#e0662a','#1f9d6b','#a43fd0','#c9971a','#d03f7a','#1e8fb3','#7a7f2a'];
+
+async function renderOffscreen(html) {
+  const f = document.createElement('iframe');
+  f.setAttribute('sandbox', 'allow-same-origin');       // no scripts: safe, but we can still measure layout
+  f.style.cssText = 'position:fixed;left:0;top:0;width:1440px;height:900px;visibility:hidden;pointer-events:none;border:0;z-index:-1';
+  document.body.appendChild(f);
+  await new Promise(res => { const t = setTimeout(res, 25000); f.onload = () => { clearTimeout(t); res(); }; f.srcdoc = html; });
+  try { await f.contentDocument.fonts.ready; } catch (e) {}
+  try { if (unlazy(f.contentDocument)) await imagesSettled(f.contentDocument, 4000); } catch (e) {}
+  try { f._revealed = markHidden(f.contentDocument); } catch (e) {}                                                     // text a script would fade in      // lazy galleries: make the pictures real before we measure
+  await new Promise(r => setTimeout(r, 350));
+  return f;
+}
+
+/* Pass 2 — for pages built by their own scripts. Runs them in an isolated sandbox (no access to this tool),
+   waits for the page to finish drawing, and measures inside the frame. */
+function measureScripted(html) {
+  return new Promise(resolve => {
+    const FRAME = 'var NONVIS=new Set(' + JSON.stringify([...NONVIS]) + ');\n' + [openTagOf, features, attrStr, segmentCore, makeExtractor, unlazy, imagesSettled].map(f => f.toString()).join('\n') +
+      '\nfunction go(){try{var r=segmentCore(document,window);var xe=null;try{var ex=makeExtractor(document,window),G=ex.flatten();xe=G.blocked;r.items.forEach(function(it){if(it.kind==="module"||it.kind==="overlay"){try{it.x=ex.build(r.refs[it.id],it.id,G)}catch(e){it.x={error:String(e).slice(0,160)}}}})}catch(e){xe="failed: "+String(e).slice(0,120)}var hd=document.head.cloneNode(true);hd.querySelectorAll("script,noscript").forEach(function(x){x.remove()});' +
+      'parent.postMessage({sk:1,items:r.items,pageH:r.pageH,blocked:xe,head:hd.innerHTML,ha:attrStr(document.documentElement),ba:attrStr(document.body)},"*")}catch(e){parent.postMessage({sk:1,error:String(e)},"*")}}' +
+      'addEventListener("load",function(){setTimeout(function(){var n=0;try{n=unlazy(document)}catch(e){}if(n)imagesSettled(document,3000).then(go,go);else go()},3000)});';
+    const tag = '<script>(function(){' + FRAME + '})()<\/script>';
+    const i = html.toLowerCase().lastIndexOf('</body>');
+    const doc = i >= 0 ? html.slice(0, i) + tag + html.slice(i) : html + tag;
+    const f = document.createElement('iframe');
+    f.setAttribute('sandbox', 'allow-scripts');
+    f.style.cssText = 'position:fixed;left:0;top:0;width:1440px;height:900px;visibility:hidden;pointer-events:none;border:0;z-index:-1';
+    const done = v => { clearTimeout(t); removeEventListener('message', on); f.remove(); resolve(v); };
+    const on = e => { if (e.source === f.contentWindow && e.data && e.data.sk) done(e.data); };
+    const t = setTimeout(() => done({ error: 'timed out' }), 40000);
+    addEventListener('message', on); document.body.appendChild(f); f.srcdoc = doc;
+  });
+}
+
+/* How much of the page is really there but not visible? Text under display:none (routes, tabs, pages a script switches on) vs. text you can see. */
+function coverageProbe(doc, pageH) {
+  let vis = 0, hid = 0, k = 0, n; const w = doc.createTreeWalker(doc.body, 4);
+  while ((n = w.nextNode()) && k++ < 40000) {
+    const s = n.nodeValue.replace(/\s+/g, ' ').trim(); if (s.length < 2) continue;
+    const p = n.parentElement; if (!p || p.closest('script,style,noscript,template,svg')) continue;
+    let shown = true; try { if (p.checkVisibility) shown = p.checkVisibility(); } catch (e) {}
+    if (shown) vis += s.length; else hid += s.length;
+  }
+  const hidden = hid >= 500 && hid > 1.5 * vis, squeezed = pageH <= 1000 && vis >= 2500;
+  return { vis, hid, suspect: hidden || squeezed, reason: hidden ? 'Most of this page (' + hid + ' characters) is hidden until a script shows it' : squeezed ? 'A lot of content (' + vis + ' characters) in a one-screen-tall page, so its layout comes from scripts' : '' };
+}
+async function addSite(name, html) {
+  const site = { id: state.nextSite++, name: name.replace(/\.(html?|txt)$/i, '').replace(/[_-]+/g, ' ').replace(/\s*\(\d+\)$/, ''), html, status: 'reading', items: [], color: SITE_COLORS[(state.nextSite - 2) % SITE_COLORS.length], motion: siteMotion(html) };
+  state.sites.push(site); renderAll();
+  let frame;
+  try {
+    frame = await renderOffscreen(html); site.revealed = frame._revealed || 0;
+    const doc = frame.contentDocument, win = frame.contentWindow;
+    const seg = segmentDocument(doc, win);
+    site.items = seg.items; site.pageH = seg.pageH;
+    site.head = doc.head ? doc.head.innerHTML : '';
+    site.htmlAttrs = attrStr(doc.documentElement); site.bodyAttrs = attrStr(doc.body);
+    site.status = 'ready';
+    // Nothing visible without scripts? Then the page draws itself with JavaScript → measure the finished page instead.
+    // Also when MOST of the page is there but hidden (client-side routes, display:none until a script shows it) or squeezed into one screen:
+    // read the finished page too, but only keep that reading if it recovers clearly more content than the plain one.
+    const wordsOf = items => items.reduce((a, i) => a + (i.kind === 'module' && i.features ? i.features.words : 0), 0);
+    let pre = null;
+    const blank = !site.items.some(i => i.kind === 'module' && (i.features.words > 5 || i.features.imgs));
+    if (!blank) {
+      const cov = coverageProbe(doc, site.pageH);
+      if (cov.suspect) {
+        const r0 = await measureScripted(html).catch(() => null);
+        if (r0 && !r0.error && wordsOf(r0.items) >= 40 && (wordsOf(r0.items) >= 1.5 * wordsOf(site.items) || (r0.pageH >= 1.5 * site.pageH && wordsOf(r0.items) >= wordsOf(site.items)))) { pre = r0; site.coverage = cov.reason + ' (' + wordsOf(site.items) + ' → ' + wordsOf(r0.items) + ' words once its scripts ran)'; }
+      }
+    }
+    if (blank || pre) {
+      frame.remove(); frame = null; site.status = 'reading'; renderAll();
+      const r = pre || await measureScripted(html);
+      if (r.error) throw new Error(r.error);
+      classifyAll(r.items, r.pageH, 900);
+      site.items = r.items; site.pageH = r.pageH; site.head = r.head; site.htmlAttrs = r.ha; site.bodyAttrs = r.ba;
+      site.revealed = 0; site.rendered = true; site.status = 'ready'; site.xstate = 'done'; site.xblocked = typeof r.blocked === 'number' ? r.blocked : 0; if (typeof r.blocked === 'string') { site.xstate = 'failed'; site.xerror = r.blocked; }
+    } else {
+      // A router that shows one page by script leaves every page hidden here: switch on the page it would show, then segment again. (Pages that only appear when scripts run take the branch above instead.)
+      try { site.spa = activateSpa(doc); if (site.spa) { const s2 = segmentDocument(doc, win); site.items = s2.items; site.pageH = s2.pageH; Object.assign(seg, s2); } } catch (e) { site.spa = 0; }
+      renderAll();                                   // parts are usable now; their details (tokens, slots, motion) arrive a moment later
+      await extractInto(site, seg, doc, win);
+    }
+  } catch (e) { site.status = 'error'; site.error = String(e); }
+  finally { if (frame) frame.remove(); }
+  renderAll(); return site;
+}
+/* Run the extractor over THIS site's own parts while its page is still rendered. A failure on one part never blocks the rest. */
+async function extractInto(site, seg, doc, win) {
+  site.xstate = 'reading';
+  let ex, G;
+  try { ex = makeExtractor(doc, win); G = ex.flatten(); site.xblocked = G.blocked; }
+  catch (e) { site.xstate = 'failed'; site.xerror = String(e).slice(0, 160); return; }
+  const mods = seg.items.filter(i => i.kind === 'module' || i.kind === 'overlay');
+  for (let i = 0; i < mods.length; i++) {
+    try { mods[i].x = ex.build(seg.refs[mods[i].id], mods[i].id, G); } catch (e) { mods[i].x = { error: String(e).slice(0, 160) }; }
+    if (i % 6 === 5) await new Promise(r => setTimeout(r));      // let the page breathe
+  }
+  site.xstate = 'done';
+  if (dlgPart && dlgPart.site === site) renderSide();
+  const sc = document.querySelector('.col.left'), top = sc.scrollTop; renderParts(); sc.scrollTop = top;
+}
+function attrStr(el) { return el ? Array.from(el.attributes).map(a => ' ' + a.name + '="' + a.value.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"').join('') : ''; }
+const modsOf = site => site.items.filter(i => i.kind === 'module' || i.kind === 'overlay');
+const siteById = id => state.sites.find(s => s.id === id);
+
+/* =====================================================================
+   4. ASSEMBLY — one source = a real, faithful page.
+      mixed sources = stacked sections, each in its own frame so styles never clash.
+   ===================================================================== */
+function emitGroup(site, picks, wholeOrder) {
+  // picks: array of items in the order the user wants them
+  const pickSet = new Set(picks.map(p => p.id));
+  const allMods = modsOf(site);
+  const inOriginalOrder = picks.every((p, i) => i === 0 || p.id > picks[i - 1].id);
+  const full = allMods.every(m => pickSet.has(m.id));
+  let seq;
+  if (inOriginalOrder) {
+    seq = site.items.filter(it => pickSet.has(it.id) || (it.kind === 'code' && !site.rendered) || (it.kind === 'glue' && full));
+  } else {
+    seq = picks.concat(site.rendered ? [] : site.items.filter(it => it.kind === 'code'));
+  }
+  let out = '', cur = [];
+  for (const it of seq) {
+    let common = 0;
+    while (common < cur.length && common < it.chain.length && cur[common].key === it.chain[common].key) common++;
+    for (let i = cur.length - 1; i >= common; i--) out += cur[i].close;
+    for (let i = common; i < it.chain.length; i++) out += it.chain[i].open;
+    cur = it.chain; out += it.html.replace(/ data-sk-reveal=""/g, '') + '\n';
+  }
+  for (let i = cur.length - 1; i >= 0; i--) out += cur[i].close;
+  return out;
+}
+function groupBlocks(blocks) {
+  const groups = [];
+  blocks.forEach(b => { const cp = drawsFromCopy(b.item), last = groups[groups.length - 1]; if (!cp && last && !last.copy && last.site.id === b.site.id) last.picks.push(b.item); else groups.push({ site: b.site, picks: [b.item], copy: cp }); });
+  return groups;
+}
+/* Runs INSIDE each section frame of a mixed page: reports the real content height to the page around it,
+   so a frame is never taller (grey/dark band) or shorter (cut off) than what it shows. */
+const FIT_JS = '(' + function () {
+  var PIN = 900, last = -1, n = 0, timer;
+  function flow(c) { var s = getComputedStyle(c); return !(s.display === 'none' || s.position === 'fixed' || s.position === 'absolute' || /^(SCRIPT|STYLE|LINK|NOSCRIPT|TEMPLATE|META)$/.test(c.tagName)); }
+  // A block sized to the screen (100vh) would keep growing inside a frame that is resized to fit it. Spot those by watching what
+  // happens when the frame changes height: a block whose height moved in step with the frame is screen-sized, so hold it at a normal screen height.
+  var snap = null, snapInner = 0;
+  function take() { var all = document.body.querySelectorAll('*'), k = Math.min(all.length, 600); snap = []; for (var i = 0; i < k; i++) snap.push([all[i], all[i].getBoundingClientRect().height]); snapInner = innerHeight; }
+  function pin() {
+    if (!snap || Math.abs(innerHeight - snapInner) < 10) return;
+    var ratio = innerHeight / snapInner;
+    for (var i = 0; i < snap.length; i++) { var el = snap[i][0], oh = snap[i][1];
+      if (oh > 300 && !el.__sk && flow(el) && Math.abs(el.getBoundingClientRect().height / oh - ratio) < 0.003) {
+        el.__sk = 1; el.style.setProperty('height', 'auto', 'important'); el.style.setProperty('min-height', Math.round(oh * PIN / snapInner) + 'px', 'important'); } }
+  }
+  function H() {
+    var b = document.body, m = 0, kids = b.children;
+    for (var i = 0; i < kids.length; i++) { var c = kids[i]; if (!flow(c)) continue; var r = c.getBoundingClientRect(); if (r.height < 1) continue;
+      m = Math.max(m, r.bottom + scrollY + (parseFloat(getComputedStyle(c).marginBottom) || 0)); }
+    var cs = getComputedStyle(b);
+    return Math.ceil(m + (parseFloat(cs.paddingBottom) || 0) + (parseFloat(cs.borderBottomWidth) || 0) + (parseFloat(cs.marginBottom) || 0));
+  }
+  function send() { pin(); var h = H(); take(); if (h < 20 || Math.abs(h - last) < 2 || ++n > 12) return; last = h; parent.postMessage({ sk2: 1, h: h }, '*'); }
+  function kick() { clearTimeout(timer); timer = setTimeout(send, 60); }
+  addEventListener('load', function () { send(); setTimeout(send, 400); setTimeout(send, 1500); });
+  addEventListener('resize', kick);
+  try { new ResizeObserver(kick).observe(document.body); } catch (e) {}
+  try { document.fonts.ready.then(kick); } catch (e) {}
+}.toString() + ')()';
+const REVEAL_CSS = '<style>[data-w-id],[data-aos],[data-scroll]{opacity:1!important;transform:none!important}</style>';   // scripts are off in thumbnails, so show things that would normally fade in
+function docFor(site, bodyHtml, o = {}) {
+  const csp = o.csp ? '<meta http-equiv="Content-Security-Policy" content="script-src \'nonce-sk\'">\n' : '';     // blocks the site\'s own scripts, lets only our measuring script run
+  const fit = o.measure ? '<script nonce="sk">' + FIT_JS + '<\/script>\n' : '';
+  return '<!DOCTYPE html>\n<html' + site.htmlAttrs + '>\n<head>\n<meta charset="utf-8">\n' + csp + '<meta name="viewport" content="width=device-width, initial-scale=1">\n' + site.head + (o.reveal ? REVEAL_CSS : '') + '\n</head>\n<body' + site.bodyAttrs + '>\n' + bodyHtml + '\n' + fit + '</body>\n</html>';
+}
+const escAttr = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+const LISTEN_JS = '<script>addEventListener("message",function(e){var d=e.data;if(!d||!d.sk2)return;var f=document.querySelectorAll("iframe");for(var i=0;i<f.length;i++)if(f[i].contentWindow===e.source){f[i].style.height=d.h+"px";break}})<\/script>';
+/* Link resolution on one finished document string (only used when a project turns it on). Anchors are checked against ids in THIS document, because a section frame cannot reach an id in another frame. */
+function fixDocLinks(str, ctx) {
+  const d = new DOMParser().parseFromString(str, 'text/html');
+  const rows = resolveLinks(d, Object.assign({}, ctx, { ids: new Set([...d.querySelectorAll('[id]')].map(e => e.id)) }), { rewrite: true });
+  if (ctx.sink) ctx.sink.push(...rows);
+  return '<!DOCTYPE html>\n' + d.documentElement.outerHTML;
+}
+/* Stage 2 (behind export.mode = "document"): ONE real document built from the parts' extracted copies, no iframes.
+   Collisions handled here: part ids repeat across sites (renamed per block), @font-face deduped, duplicate element ids renamed with their references, only the first fixed layer stays fixed. */
+/* A still copy has no scripts to reveal things, so anything the original hid until its scripts ran is shown (the reveal behaviour hides below-the-fold ones again when it is on). */
+const STILL_CSS = '[data-sk-reveal]{opacity:1!important;visibility:visible!important;transform:none!important}[data-sk-reveal] *{opacity:1!important;transform:none!important}[data-sk-wrap]{min-height:0!important;height:auto!important}[data-w-id],[data-aos],[data-scroll],[style*="opacity:0"],[style*="opacity: 0"]{opacity:1!important}[data-w-id],[data-aos],[data-scroll]{transform:none!important}[style*="visibility:hidden"],[style*="visibility: hidden"]{visibility:visible!important}';
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function composeDocument(blocks, { links = null, behaviours = false } = {}) {
+  const seen = new Set(), faces = new Set(), css = [], body = [], rep = { blocks: 0, skipped: [], idsRenamed: 0, flattened: [], fonts: 0 };
+  let bg = '', fixedTaken = false, lang = '', title = '';
+  blocks.forEach(b => {
+    const m = b.item; if (!usable(m)) { rep.skipped.push(m.role + '@' + b.site.name); return; }
+    const x = hasEdits(m) ? editedCopy(m) : m.x, ns = 'skd' + b.uid, idRe = new RegExp('(?<![\\w-])' + reEsc(x.id) + '(?![A-Za-z0-9-])', 'g'), ren = s => s.replace(idRe, ns);
+    let html = ren(x.html), sheet = ren(x.keyframes + '\n' + x.css);
+    (x.fontFaces.match(/@font-face\s*\{[^}]*\}/g) || []).forEach(f => faces.add(f.replace(/\s+/g, ' ').trim()));
+    const doc = new DOMParser().parseFromString('<body>' + html, 'text/html');
+    [...doc.body.querySelectorAll('[id]')].forEach(e => { const id = e.id; if (id === ns || id.startsWith(ns + '_')) return; if (!seen.has(id)) { seen.add(id); return; }
+      let k = 2, nid; while (seen.has(nid = id + '-' + k)) k++; seen.add(nid); rep.idsRenamed++; e.id = nid;
+      doc.body.querySelectorAll('[href="#' + id + '"],[for="' + id + '"],[aria-controls="' + id + '"],[aria-labelledby="' + id + '"],[data-target="#' + id + '"],[data-bs-target="#' + id + '"]').forEach(r => { ['href', 'data-target', 'data-bs-target'].forEach(a => { if (r.getAttribute(a) === '#' + id) r.setAttribute(a, '#' + nid); }); ['for', 'aria-controls', 'aria-labelledby'].forEach(a => { if (r.getAttribute(a) === id) r.setAttribute(a, nid); }); });
+      sheet = sheet.replace(new RegExp('#' + reEsc(id) + '(?![\\w-])', 'g'), '#' + nid); });
+    [...doc.body.querySelectorAll('*')].forEach(e => { if (!e.hasAttribute('data-skpart') && e.querySelector('[data-skpart]')) { e.setAttribute('data-sk-wrap', '1'); rep.wrapped = (rep.wrapped || 0) + 1; } });   // a wrapper the site shares between parts (main.page{min-height}) must not repeat its height once per part
+    html = doc.body.innerHTML;
+    const hasFixed = (m.x.risks || []).some(r => /fixed layer/.test(r));
+    if (hasFixed) { if (fixedTaken) { sheet += '\n#' + ns + ',#' + ns + '>*{position:static!important;top:auto!important}'; rep.flattened.push(m.role + '@' + b.site.name); } else fixedTaken = true; }
+    if (!bg && x.pageBg) bg = x.pageBg; if (!lang) { const l = /lang="([^"]+)"/.exec(b.site.htmlAttrs || ''); if (l) lang = l[1]; } if (!title) title = b.site.name;
+    css.push('/* ' + m.role + ' from ' + b.site.name + ' */\n' + sheet); body.push(html); rep.blocks++;
+  });
+  rep.fonts = faces.size; composeDocument.last = rep;
+  let out = '<!DOCTYPE html>\n<html lang="' + (lang || 'en') + '">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + title.replace(/</g, '&lt;') + '</title>\n<style>\n' + [...faces].join('\n') + '\n' + css.join('\n') + '\n' + STILL_CSS + '\n</style>\n</head>\n<body style="margin:0;background:' + (bg || '#fff') + '">\n' + body.join('\n') + '\n</body>\n</html>';
+  if (links) out = fixDocLinks(out, links);
+  return behaviours ? withBehaviours(out) : out;
+}
+/* Stage 3 (behind export.behaviours): tag widgets in a finished document and add the small runtime. Off by default; with it off nothing here is called. */
+function withBehaviours(str) {
+  const d = new DOMParser().parseFromString(str, 'text/html'), found = skAnnotate(d.body);
+  const st = d.createElement('style'); st.id = 'sk-behaviours-css'; st.textContent = SK_BEHAVIOUR_CSS; d.head.append(st);
+  const sc = d.createElement('script'); sc.setAttribute('nonce', 'sk'); sc.id = 'sk-behaviours'; sc.textContent = '(' + skRuntime.toString() + ')()'; d.body.append(sc);
+  if (withBehaviours.sink) withBehaviours.sink.push(found);
+  return '<!DOCTYPE html>\n' + d.documentElement.outerHTML;
+}
+function composePage(blocks, { noSiteScripts = false, links = null, behaviours = state.export.behaviours, mode = state.export.mode } = {}) {
+  const groups = groupBlocks(blocks);
+  if (!groups.length) return '';
+  if (mode === 'document') return composeDocument(blocks, { links, behaviours });
+  const post = s => { if (links) s = fixDocLinks(s, links); return behaviours ? withBehaviours(s) : s; };
+  const groupDoc = (g, o) => post(g.copy ? partDoc(g.picks[0], Object.assign({}, o, { csp: true })) : docFor(g.site, emitGroup(g.site, g.picks), o));   // edited parts come from their copy; copies never run site scripts
+  if (groups.length === 1) return groupDoc(groups[0], {});
+  const frames = groups.map(g => {
+    const h = Math.max(40, g.picks.reduce((a, p) => a + (p.kind === 'module' ? p.height : 0), 0));   // starting guess; the frame corrects it
+    return '<iframe scrolling="no" data-h="' + h + '" style="height:' + h + 'px" srcdoc="' + escAttr(groupDoc(g, { measure: true, csp: noSiteScripts })) + '"></iframe>';
+  }).join('\n');
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>My website</title><style>html,body{margin:0;background:#fff}iframe{display:block;width:100%;border:0}</style>' + LISTEN_JS + '</head><body>\n' + frames + '\n</body></html>';
+}
+
+/* =====================================================================
+   5. PAGE BUILDING HELPERS (templates + JSON intent)
+   ===================================================================== */
+const TEMPLATES = {
+  landing:    ['nav','hero','features','cta','footer'],
+  business:   ['nav','hero','features','testimonial','pricing','cta','footer'],
+  portfolio:  ['nav','hero','gallery','features','contact','footer'],
+  realestate: ['nav','hero','gallery','features','contact','footer']
+};
+function fillSlots(slots) {
+  // slots: [{role, source?}] — prefer ONE website that fills the most slots, then top up from others
+  const ready = state.sites.filter(s => s.status === 'ready');
+  const notes = [], picked = [];
+  if (!ready.length) return { picked, notes: [{ t: 'Add a website first.' }] };
+  const score = site => slots.filter(sl => modsOf(site).some(m => m.role === sl.role)).length;
+  const order = ready.slice().sort((a, b) => score(b) - score(a));
+  const primary = order[0], used = new Set();
+  for (const sl of slots) {
+    const pools = sl.source ? ready.filter(s => s.name.toLowerCase().includes(String(sl.source).toLowerCase())) : order;
+    let found = null;
+    for (const site of pools) {
+      const c = modsOf(site).filter(m => m.role === sl.role && !used.has(site.id + ':' + m.id)).sort((a, b) => b.conf - a.conf)[0];
+      if (c) { found = { site, item: c }; break; }
+    }
+    if (found) { used.add(found.site.id + ':' + found.item.id); picked.push(found); }
+    else notes.push({ t: 'No “' + roleLabel(sl.role) + '” part was found in your websites, so that slot was skipped.' });
+  }
+  if (new Set(picked.map(p => p.site.id)).size > 1) notes.push({ t: 'This page mixes parts from different websites. Each website’s section keeps its own look, so sections may not match perfectly.', ok: true });
+  picked.sort((a, b) => 0); // keep slot order
+  return { picked, notes };
+}
+function applyPicked(res) {
+  state.blocks = res.picked.map(p => ({ uid: state.nextBlock++, site: p.site, item: p.item }));
+  state.notes = res.notes; renderAll();
+}
+
+/* =====================================================================
+   6. UI
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const h = (tag, props, ...kids) => { const e = document.createElement(tag); if (props) for (const k in props) { if (k === 'class') e.className = props[k]; else if (k === 'style') e.style.cssText = props[k]; else if (k.startsWith('on')) e.addEventListener(k.slice(2), props[k]); else if (props[k] !== false && props[k] != null) e.setAttribute(k, props[k] === true ? '' : props[k]); } kids.flat().forEach(k => e.append(k && k.nodeType ? k : document.createTextNode(k == null ? '' : k))); return e; };
+
+function addBlock(site, item) { state.blocks.push({ uid: state.nextBlock++, site, item }); state.notes = []; renderAll(); }
+function moveBlock(i, d) { const j = i + d; if (j < 0 || j >= state.blocks.length) return; const b = state.blocks.splice(i, 1)[0]; state.blocks.splice(j, 0, b); renderAll(); }
+
+function renderSites() {
+  const box = $('sites'); box.replaceChildren();
+  $('drop').classList.toggle('compact', state.sites.length > 0);
+  state.sites.forEach(s => {
+    const mods = modsOf(s);
+    box.append(h('div', { class: 'site' },
+      h('div', { class: 'name' }, h('span', { class: 'sw', style: 'background:' + s.color }), s.name,
+        h('button', { class: 'x', title: 'Remove this website', 'aria-label': 'Remove ' + s.name, onclick: () => removeSite(s) }, '×')),
+      h('div', { class: 'meta' },
+        s.status === 'reading' ? 'Reading the page…' : s.status === 'error' ? 'Could not read this file' : mods.length + ' parts found',
+        s.rendered ? h('span', { class: 'badge', title: 'This site draws itself with scripts. Parts come from the finished page; its animations are not carried over yet.' }, 'scripted page · static copy') : null,
+        ...s.motion.slice(0, 3).map(m => h('span', { class: 'badge moves' }, m)),
+        s.status === 'ready' ? h('button', { class: 'btn small', style: 'margin-left:auto', onclick: () => { state.blocks = mods.filter(m => m.kind === 'module' || m.role === 'nav').map(m => ({ uid: state.nextBlock++, site: s, item: m })); state.notes = []; renderAll(); } }, 'Use the whole page') : null)));
+  });
+}
+function renderFilters() {
+  const counts = {}; let total = 0;
+  state.sites.forEach(s => modsOf(s).forEach(m => { counts[m.role] = (counts[m.role] || 0) + 1; total++; }));
+  const sel = $('filters'); sel.replaceChildren();
+  sel.append(h('option', { value: 'all' }, 'All parts (' + total + ')'));
+  Object.keys(counts).sort((a, b) => counts[b] - counts[a]).forEach(r => sel.append(h('option', { value: r, selected: state.filter === r }, roleLabel(r) + ' (' + counts[r] + ')')));
+  if (state.filter !== 'all' && !counts[state.filter]) state.filter = 'all';
+  sel.value = state.filter;
+}
+let thumbIO = null;
+function mountThumb(t) {
+  if (t.dataset.on || !t._p) return;
+  const w = t.clientWidth; if (!w) return;
+  const sc = w / 1440, { s, m } = t._p;
+  const f = h('iframe', { title: '', tabindex: '-1', 'aria-hidden': 'true', sandbox: 'allow-same-origin' });
+  f.style.cssText = 'height:' + Math.max(40, Math.round(Math.min(m.height, t.clientHeight / sc))) + 'px;transform:scale(' + sc + ')';
+  f.srcdoc = drawsFromCopy(m) ? partDoc(m, { csp: true }) : docFor(s, emitGroup(s, [m]), { reveal: true });
+  t.append(f); t.dataset.on = '1';
+}
+function unmountThumb(t) { if (!t.dataset.on) return; const f = t.querySelector('iframe'); if (f) f.remove(); delete t.dataset.on; }
+function makeThumb(s, m) {
+  const t = h('div', { class: 'thumb' + (m.role === 'overlay' ? ' ph' : ''), title: 'Click to look closer', style: 'height:' + Math.round(Math.max(26, Math.min(96, m.height * 0.2))) + 'px' }, m.role === 'overlay' ? 'popup · no picture' : null);
+  t._p = { s, m }; t.onclick = () => openPartPreview(s, m);
+  if (m.role !== 'overlay' && thumbIO) thumbIO.observe(t);
+  return t;
+}
+function renderParts() {
+  const box = $('parts'); box.replaceChildren();
+  if (thumbIO) thumbIO.disconnect();
+  thumbIO = new IntersectionObserver(es => es.forEach(e => e.isIntersecting ? mountThumb(e.target) : unmountThumb(e.target)), { root: document.querySelector('.col.left'), rootMargin: '300px 0px' });
+  const rows = [];
+  state.sites.forEach(s => modsOf(s).forEach(m => rows.push({ s, m })));
+  if (!rows.length) { box.append(h('div', { class: 'empty' }, state.sites.length ? 'Reading your website…' : 'Add a website above and its parts will show up here.')); return; }
+  const q = state.query.trim().toLowerCase();
+  const list = rows.filter(({ m, s }) => (state.filter === 'all' || m.role === state.filter) && (!q || (roleLabel(m.role) + ' ' + m.features.text + ' ' + s.name).toLowerCase().includes(q)));
+  if (!list.length) { box.append(h('div', { class: 'empty' }, 'No parts match that.')); return; }
+  list.slice(0, 250).forEach(({ s, m }) => {
+    const sel = h('select', { 'aria-label': 'Change what kind of part this is', onchange: e => { m.role = e.target.value; m.conf = 1; m.userSet = true; renderParts(); renderFilters(); renderOutline(); } },
+      ...Object.keys(ROLES).map(r => h('option', { value: r, selected: r === m.role }, roleLabel(r))));
+    box.append(h('div', { class: 'part', style: '--rc:' + roleColor(m.role) },
+      h('div', { class: 'bar' }),
+      h('div', { class: 'body' },
+        h('div', { class: 'row1' }, h('span', { class: 'label' }, roleLabel(m.role)), m.features.moves ? h('span', { class: 'badge moves', title: 'This part has animation hooks' }, 'moves') : null,
+          approxReasons(s, m).length ? h('span', { class: 'badge warn', title: 'Approximate copy: ' + approxReasons(s, m).join('. ') }, 'approximate') : null, hasEdits(m) ? h('span', { class: 'badge moves', title: 'You changed this part’s dials, slots or motion' }, 'edited') : null, h('span', { class: 'site-tag', style: 'color:' + s.color }, s.name)),
+        makeThumb(s, m),
+        h('div', { class: 'snip' }, m.features.text.slice(0, 120) || '(no text — mostly images)'),
+        h('div', { class: 'row3' }, !isSure(m) ? h('span', { class: 'unsure', title: 'Not sure (confidence ' + m.conf.toFixed(2) + ', needs ' + SURE_AT + '). This is a guess; you can change it.' }, 'not sure') : null, sel, h('span', { class: 'grow' }),
+          h('button', { class: 'btn small', onclick: () => openPartPreview(s, m) }, 'Look'),
+          h('button', { class: 'btn small primary', onclick: () => addBlock(s, m) }, '+ Add')))));
+  });
+  if (list.length > 250) box.append(h('div', { class: 'empty' }, (list.length - 250) + ' more — narrow the search to see them.'));
+}
+function renderOutline() {
+  const box = $('outline'); box.replaceChildren();
+  if (!state.blocks.length) box.append(h('div', { class: 'empty' }, 'Nothing here yet. Press ', h('b', null, '+ Add'), ' on a part, or use quick start below.'));
+  state.blocks.forEach((b, i) => {
+    const el = h('div', { class: 'block', draggable: 'true', style: '--rc:' + roleColor(b.item.role),
+      ondragstart: e => { e.dataTransfer.setData('text/plain', String(i)); el.classList.add('dragging'); },
+      ondragend: () => el.classList.remove('dragging'),
+      ondragover: e => { e.preventDefault(); el.classList.add('dropto'); }, ondragleave: () => el.classList.remove('dropto'),
+      ondrop: e => { e.preventDefault(); const from = +e.dataTransfer.getData('text/plain'); if (isNaN(from) || from === i) return renderOutline(); const x = state.blocks.splice(from, 1)[0]; state.blocks.splice(i, 0, x); renderAll(); } },
+      h('div', { class: 'dot' }),
+      h('div', null, h('div', { class: 't' }, roleLabel(b.item.role)), h('div', { class: 's' }, b.site.name + (drawsFromCopy(b.item) ? ' · edited' + (approxReasons(b.site, b.item).length ? ' (approximate copy)' : '') : ''))),
+      h('div', { class: 'ops' },
+        h('button', { title: 'Move up', 'aria-label': 'Move up', onclick: () => moveBlock(i, -1) }, '↑'),
+        h('button', { title: 'Move down', 'aria-label': 'Move down', onclick: () => moveBlock(i, 1) }, '↓'),
+        h('button', { title: 'Remove', 'aria-label': 'Remove from page', onclick: () => { state.blocks.splice(i, 1); renderAll(); } }, '✕')));
+    box.append(el);
+  });
+  const n = $('notes'); n.replaceChildren();
+  state.notes.forEach(x => n.append(h('div', { class: 'note' + (x.ok ? ' ok' : '') }, x.t)));
+  $('download').disabled = !state.blocks.length;
+}
+
+let previewTimer = null;
+function renderPreview() { clearTimeout(previewTimer); previewTimer = setTimeout(doPreview, 120); }
+function doPreview() {
+  const view = $('view'), wrap = $('frameWrap'), stage = $('stage');
+  $('ph').hidden = state.blocks.length > 0; wrap.hidden = !state.blocks.length;
+  $('stat').textContent = state.blocks.length ? state.blocks.length + ' parts · ' + new Set(state.blocks.map(b => b.site.id)).size + ' website(s)' : '';
+  if (!state.blocks.length) { view.srcdoc = ''; return; }
+  const W = state.device, avail = stage.clientWidth - 32, scale = Math.min(1, avail / W);
+  const Hh = Math.max(300, (stage.clientHeight - 32) / scale);
+  view.style.width = W + 'px'; view.style.height = Hh + 'px';
+  wrap.style.width = W * scale + 'px'; wrap.style.height = (stage.clientHeight - 32) + 'px';
+  view.style.transform = 'scale(' + scale + ')'; view.style.transformOrigin = '0 0';
+  const mixed = groupBlocks(state.blocks).length > 1;
+  // mixed pages need scripts so each section can report its height; with animations off the sites' own scripts are blocked by a policy inside each section
+  view.setAttribute('sandbox', state.anim || mixed ? 'allow-scripts' : 'allow-same-origin');
+  view.srcdoc = composePage(state.blocks, { noSiteScripts: !state.anim });
+}
+function renderAll() { renderSites(); renderFilters(); renderParts(); renderOutline(); renderPreview(); }
+
+function removeSite(s) { state.sites = state.sites.filter(x => x !== s); state.blocks = state.blocks.filter(b => b.site !== s); state.notes = []; renderAll(); }
+
+/* part preview dialog: the part itself, plus what it is made of (tokens, slots, motion, how sure we are, how faithful the copy is) */
+let dlgPart = null, dlgView = 'kit';
+const SKIP_TAG = /^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|LINK|META)$/;
+const px = v => parseFloat(v) || 0;
+const copyDoc = (x, o = {}) => '<!DOCTYPE html><html><head><meta charset="utf-8">' + (o.csp ? '<meta http-equiv="Content-Security-Policy" content="script-src \'nonce-sk\'">' : '') + '<meta name="viewport" content="width=device-width, initial-scale=1"><style>' + x.fontFaces + '\n' + x.keyframes + '\n' + x.css + '</style></head><body style="margin:0;background:' + x.pageBg + '">' + x.html + (o.measure ? '\n<script nonce="sk">' + FIT_JS + '<\/script>' : '') + '</body></html>';
+
+/* ---------- edits: dials, slots, motion ----------
+   An edit changes the EXTRACTED copy of a part (never the site's own markup). A part with edits is drawn from that copy everywhere:
+   thumbnail, preview, download. Dials work through the --sk-* variables the extractor wired in, so a dial only moves what is wired (the font report says what is not). */
+const MOTION_PRESETS = [['keep', 'Keep what the site has'], ['still', 'Still (no motion)'], ['fade', 'Fade in as it scrolls into view'], ['rise', 'Rise and fade in'], ['left', 'Slide in from the left'], ['right', 'Slide in from the right'], ['zoom', 'Zoom in'], ['hover', 'Lift items on hover (keeps the site\'s own motion)']];
+const usable = m => !!(m.x && !m.x.error);
+const hasEdits = m => { const e = m.edit; return !!(e && (Object.keys(e.dials || {}).length || Object.keys(e.slots || {}).length || (e.motion && e.motion !== 'keep'))); };
+const drawsFromCopy = m => hasEdits(m) && usable(m);
+const norm = t => (t || '').replace(/\s+/g, ' ').trim();
+const asHex = c => { c = c || ''; if (/^#[0-9a-f]{6}$/i.test(c)) return c; if (/^#[0-9a-f]{3}$/i.test(c)) return '#' + c.slice(1).replace(/./g, '$&$&'); const k = c.match(/[\d.]+/g); return k && k.length >= 3 ? '#' + k.slice(0, 3).map(n => Math.round(+n).toString(16).padStart(2, '0')).join('') : '#ffffff'; };
+function ensureEdit(m) { return m.edit || (m.edit = { dials: {}, slots: {}, motion: 'keep' }); }
+function setDial(m, key, val) { const e = ensureEdit(m); if (val == null || val === '' || (typeof val === 'number' && isNaN(val))) delete e.dials[key]; else e.dials[key] = val; recordEdit(m); }
+function setSlot(m, key, val) { const e = ensureEdit(m); if (val == null) delete e.slots[key]; else e.slots[key] = val; recordEdit(m); }
+function setMotion(m, v) { ensureEdit(m).motion = v || 'keep'; recordEdit(m); }
+function resetEdits(m) { delete m.edit; recordEdit(m); }
+/* ---------- undo / redo: one step = one change to one part's edit state (dials, slots, motion), kept as small JSON, never DOM ---------- */
+const HIST = { undo: [], redo: [], max: 200 };
+const snapOf = m => JSON.stringify(m.edit || null);
+function recordEdit(m, coalesce) {
+  const cur = snapOf(m), prev = m._snap == null ? 'null' : m._snap; if (cur === prev) return;
+  const now = Date.now(), top = HIST.undo[HIST.undo.length - 1];
+  if (coalesce && top && top.m === m && now - top.t < 900) { top.after = cur; top.t = now; }      // typing a sentence is one step
+  else { HIST.undo.push({ m, before: prev, after: cur, t: now }); if (HIST.undo.length > HIST.max) HIST.undo.shift(); }
+  HIST.redo.length = 0; m._snap = cur;
+}
+function applySnap(m, s) { const v = JSON.parse(s); if (v) m.edit = v; else delete m.edit; m._snap = s; }
+function afterHistory(m) { if (typeof dlgPart !== 'undefined' && dlgPart && dlgPart.m === m && $('dlg').open) { dlgView = 'copy'; showView(); renderSide(); } renderAll(); }
+function undo() { const e = HIST.undo.pop(); if (!e) return false; applySnap(e.m, e.before); HIST.redo.push(e); afterHistory(e.m); return true; }
+function redo() { const e = HIST.redo.pop(); if (!e) return false; applySnap(e.m, e.after); HIST.undo.push(e); afterHistory(e.m); return true; }
+const history = () => ({ undo: HIST.undo.length, redo: HIST.redo.length });
+function clearHistory() { HIST.undo.length = 0; HIST.redo.length = 0; }
+function editedCopy(m) {
+  const x = m.x, e = m.edit || {}, d = e.dials || {}, sl = e.slots || {}, id = x.id;
+  let css = x.css;
+  if (d.radius != null) css = css.replace(/(border(?:-(?:top|bottom)-(?:left|right))?-radius\s*:\s*)([^;}]+)/g, (a, p, v) => /^\s*(0|0px|50%|inherit|initial|unset)\s*(!important)?\s*$/.test(v) || px(v) >= 200 ? a : p + 'var(--sk-radius,' + v.replace(/\s*!important/, '') + ')' + (/!important/.test(v) ? ' !important' : ''));
+  const v = []; if (d.bg) v.push('--sk-bg:' + d.bg); if (d.text) v.push('--sk-text:' + d.text); if (d.accent) v.push('--sk-accent:' + d.accent);
+  if (d.fontDisplay) v.push('--sk-font-display:' + d.fontDisplay); if (d.fontBody) v.push('--sk-font-body:' + d.fontBody); if (d.radius != null) v.push('--sk-radius:' + d.radius + 'px');
+  (x.tokens.fonts.vars || []).forEach(n => { const isD = /head|display|title|serif|brand/i.test(n); if (isD && d.fontDisplay) v.push(n + ':' + d.fontDisplay); if (!isD && d.fontBody) v.push(n + ':' + d.fontBody); });   // the site's own font variables (--body, --serif...) follow the dial too; which is which is guessed from the name
+  let extra = v.length ? '#' + id + '{' + v.join(';') + '}\n' : '';
+  if (d.fontBody) extra += '#' + id + '{font-family:' + d.fontBody + '}\n';   // parts that only inherit their font have nothing wired, so a chosen font is also set on the part itself
+  if (d.fontDisplay) extra += '#' + id + ' :is(h1,h2,h3,h4,h5,h6){font-family:' + d.fontDisplay + '}\n';
+  if (d.hSize) extra += '#' + id + ' :is(h1,h2,h3){font-size:' + d.hSize + 'px!important}\n';
+  if (d.bSize) extra += '#' + id + ' :is(p,li,dd,blockquote){font-size:' + d.bSize + 'px!important}\n';
+  const mo = e.motion || 'keep', kids = '#' + id + ' *,#' + id + ' *::before,#' + id + ' *::after{animation:none!important;transition:none!important}\n#' + id + ' [data-w-id],#' + id + ' [data-aos],#' + id + ' [data-scroll]{opacity:1!important;transform:none!important}\n';
+  if (mo === 'still') extra += kids + '#' + id + '{animation:none!important}\n';
+  const FROM = { fade: 'translateY(0)', rise: 'translateY(40px)', left: 'translateX(-60px)', right: 'translateX(60px)', zoom: 'scale(.92)' };
+  if (FROM[mo]) extra += kids + '@keyframes ' + id + '_in{from{opacity:0;transform:' + FROM[mo] + '}to{opacity:1;transform:none}}\n#' + id + '{animation:' + id + '_in .9s ease both}\n@supports (animation-timeline:view()){#' + id + '{animation:' + id + '_in linear both;animation-timeline:view();animation-range:entry 0% cover 30%}}\n';
+  if (mo === 'hover') extra += '#' + id + ' :is(a,button,[class*=card],[class*=item]){transition:transform .2s ease,box-shadow .2s ease!important}\n#' + id + ' :is(a,button,[class*=card],[class*=item]):hover{transform:translateY(-4px)!important;box-shadow:0 8px 20px rgba(0,0,0,.15)}\n';
+  let html = x.html;
+  if (Object.keys(sl).length || d.bgLayer) {
+    const doc = new DOMParser().parseFromString('<body>' + html, 'text/html'), body = doc.body, used = new Set();
+    const setText = (el, t) => { const w = doc.createTreeWalker(el, 4); let first = null, n; while ((n = w.nextNode())) { if (!norm(n.nodeValue)) continue; if (!first) { first = n; n.nodeValue = t; } else n.nodeValue = ''; } if (!first) el.append(t); };   // keeps icons and wrappers, swaps only the words
+    const pick = (sel, from, cap) => [...body.querySelectorAll(sel)].find(el => !used.has(el) && norm(el.textContent).slice(0, cap || 4000) === norm(from));
+    // elements are found by their recorded position among all elements of that kind (x.slots.*Ord); matching the old text is only the fallback for copies made before positions were recorded
+    const byPos = (sel, ords, i) => { const k = ords && ords[i]; return k != null && k >= 0 ? [...body.querySelectorAll(sel)][k] || null : null; };
+    const byIdx = (key, sel, cap, ords) => Object.keys(sl[key] || {}).sort((a, b) => a - b).forEach(i => { const o = sl[key][i], el = byPos(sel, ords, i) || pick(sel, o.from, cap); if (el) { used.add(el); setText(el, o.to); } });
+    byIdx('headings', 'h1,h2,h3,h4', 2000, x.slots.headOrd); byIdx('paragraphs', 'p', 4000, x.slots.paraOrd);
+    Object.keys(sl.buttons || {}).sort((a, b) => a - b).forEach(i => { const b = sl.buttons[i], el = byPos('a[href],button', [x.slots.buttons[i] && x.slots.buttons[i].ord], 0) || pick('a[href],button', b.from, 400); if (!el) return; used.add(el); if (b.to != null && b.to !== b.from) setText(el, b.to); if (b.href != null && el.localName === 'a') el.setAttribute('href', b.href); });
+    Object.keys(sl.images || {}).forEach(i => { const o = sl.images[i], el = byPos('img', x.slots.imgOrd, i) || [...body.querySelectorAll('img')].find(n => !used.has(n) && n.getAttribute('src') === o.from); if (!el) return; used.add(el); el.setAttribute('src', o.to); ['srcset', 'sizes', 'data-src', 'data-srcset'].forEach(a => el.removeAttribute(a)); el.setAttribute('loading', 'eager'); if (el.parentElement && el.parentElement.localName === 'picture') el.parentElement.querySelectorAll('source').forEach(s => s.remove()); });
+    const roots = [...body.querySelectorAll('[data-skpart]')], at = p => { let el = roots[p[0]]; for (let k = 1; k < p.length && el; k++) el = el.children[p[k]]; return el; };
+    if (sl.cards) { const c = sl.cards, cont = at(c.path); if (cont) { const kids = [...cont.children], cards = c.idx.map(k => kids[k]);
+      if (cards.every(Boolean)) { const mark = doc.createComment(''); cont.insertBefore(mark, cards[0]); const spare = cards.map(n => n.cloneNode(true)), seen = new Set();
+        cards.forEach(n => n.remove());
+        c.order.forEach(k => { let n; if (!seen.has(k)) { n = cards[k]; seen.add(k); } else { n = spare[k].cloneNode(true); n.removeAttribute('id'); n.querySelectorAll('[id]').forEach(e => e.removeAttribute('id')); } cont.insertBefore(n, mark); });
+        mark.remove(); } } }
+    if (d.bgLayer && x.slots.bgLayer) { const L = d.bgLayer, el = at(x.slots.bgLayer.path); if (el) { const S = (p, v) => el.style.setProperty(p, v, 'important');
+      if (L.mode === 'gradient') S('background-image', 'linear-gradient(' + (L.angle || 0) + 'deg,' + L.a + ',' + L.b + ')');
+      else if (L.mode === 'color') { S('background-image', 'none'); S('background-color', L.color); }
+      else if (L.mode === 'picture' && L.src) { S('background-image', 'url("' + L.src.replace(/"/g, '%22') + '")'); S('background-size', 'cover'); S('background-position', 'center'); } } }
+    html = body.innerHTML;
+  }
+  return Object.assign({}, x, { html, css: css + '\n' + extra });
+}
+/* the document for a part, honouring edits */
+const partDoc = (m, o) => copyDoc(hasEdits(m) ? editedCopy(m) : m.x, o);
+
+/* Why a part is only an approximate copy. Known causes (found before drawing anything) plus what the live check measured. */
+function approxReasons(site, m) {
+  const r = [];
+  if (m.x && m.x.risks) r.push(...m.x.risks);
+  if (site.rendered) r.push('This site draws itself with scripts, so this is a still copy of the finished page');
+  if (m.x && m.x.fid && m.x.fid.approx) r.push(m.x.fid.reason);
+  return r;
+}
+/* The ~8 dials of a part, with the value the part has right now. */
+function dialsOf(x) {
+  const c = x.tokens.colors, f = x.tokens.fonts, nums = x.tokens.sizes.map(px).filter(Boolean);
+  const wired = x.stats.fontDecls ? x.stats.fontWired + ' of ' + x.stats.fontDecls + ' font rules wired' : '';
+  const fam = v => v ? v.split(',')[0].trim().replace(/^["']|["']$/g, '') : null;
+  return [
+    { k: 'Background', key: 'bg', kind: 'color', v: c['sk-bg'] || null, color: true, none: 'transparent' },
+    { k: 'Text colour', key: 'text', kind: 'color', v: c['sk-text'] || null, color: true },
+    { k: 'Accent', key: 'accent', kind: 'color', v: c['sk-accent'] || null, color: true, none: 'none found' },
+    { k: 'Heading font', key: 'fontDisplay', kind: 'font', v: fam(f.display), note: wired, none: 'no heading' },
+    { k: 'Body font', key: 'fontBody', kind: 'font', v: fam(f.body), note: wired },
+    { k: 'Corner radius', key: 'radius', kind: 'num', v: x.tokens.radii[0] || null, none: 'square' },
+    { k: 'Heading size', key: 'hSize', kind: 'num', v: x.tokens.headingSize ? Math.round(px(x.tokens.headingSize)) + 'px' : null, none: 'no heading' },
+    { k: 'Body size', key: 'bSize', kind: 'num', v: x.tokens.bodySize ? Math.round(px(x.tokens.bodySize)) + 'px' : nums.length ? Math.round(nums[0]) + 'px' : null, none: 'no text' }
+  ];
+}
+/* Motion as a preset name a person would recognise, never raw code. First label is the main one. */
+function keyframeLabel(k) {
+  if (/ticker|marquee|^mq|scroll/i.test(k)) return 'Marquee / ticker';
+  if (/fade/i.test(k)) return 'Fade in';
+  if (/pulse|beat|blink|flash/i.test(k)) return 'Pulse';
+  if (/spin|rotate|load/i.test(k)) return 'Spin';
+  if (/^kb$|kenburns|zoom|scale/i.test(k)) return 'Slow zoom';
+  if (/slide|carousel|swipe/i.test(k)) return 'Slide';
+  if (/bounce/i.test(k)) return 'Bounce';
+  if (/float|wiggle|shake/i.test(k)) return 'Float / wiggle';
+  return 'Custom animation (' + k + ')';
+}
+function motionLabels(mo) {
+  const L = [];
+  if (mo.lottie) L.push('Lottie animation');
+  if (mo.dataW) L.push('Webflow interaction' + (mo.dataW > 1 ? ' ×' + mo.dataW : ''));
+  if (mo.aos) L.push('Reveal on scroll (AOS)');
+  if (mo.scrollAttr) L.push('Scroll-linked / parallax');
+  if (mo.slider) L.push('Carousel / slider');
+  if (mo.video) L.push('Video');
+  (mo.keyframes || []).forEach(k => L.push(keyframeLabel(k)));
+  if (mo.transitions) L.push('Hover transitions');
+  const u = [...new Set(L)];
+  return u.length ? u : ['Still (no motion)'];
+}
+/* Does the standalone copy line up with the original? Boxes (position, size) and basic styles, element by element. */
+async function checkFidelity(m) {
+  const x = m.x; if (!x || x.error) return null; if (x.fid) return x.fid;
+  const f = document.createElement('iframe'); f.setAttribute('sandbox', 'allow-same-origin');
+  f.style.cssText = 'position:fixed;left:-20000px;top:0;width:1440px;height:900px;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  try {
+    await new Promise(res => { const t = setTimeout(res, 8000); f.onload = () => { clearTimeout(t); res(); }; f.srcdoc = copyDoc(x); });
+    try { await f.contentDocument.fonts.ready; } catch (e) {}
+    await new Promise(r => setTimeout(r, 150));
+    const d = f.contentDocument, w = f.contentWindow;
+    const roots = [...d.querySelectorAll('[data-skpart]')];
+    const els = roots.flatMap(r => [r, ...r.querySelectorAll('*')]).filter(e => !SKIP_TAG.test(e.tagName) && !e.closest('noscript,template'));
+    if (!roots.length || !els.length) return (x.fid = { approx: true, reason: 'The copy came out empty', geom: 0, style: 0, hErr: 1, n: 0 });
+    const rects = roots.map(r => r.getBoundingClientRect()), L = Math.min(...rects.map(r => r.left)), T = Math.min(...rects.map(r => r.top)), B = Math.max(...rects.map(r => r.bottom));
+    const n = Math.min(x.sample.length, els.length);
+    let gN = 0, gOk = 0, sN = 0, sOk = 0;
+    for (let i = 0; i < n; i++) {
+      const o = x.sample[i]; if (o[7] || (o[2] <= 0 && o[3] <= 0)) continue;
+      const r = els[i].getBoundingClientRect(), s = w.getComputedStyle(els[i]);
+      gN++; if (Math.abs(r.left - L - o[0]) <= 6 && Math.abs(r.top - T - o[1]) <= 6 && Math.abs(r.width - o[2]) <= Math.max(6, 0.04 * o[2]) && Math.abs(r.height - o[3]) <= Math.max(6, 0.04 * o[3])) gOk++;
+      sN++; if (s.color === o[4] && s.backgroundColor === o[5] && s.fontSize === o[6]) sOk++;
+    }
+    const geom = gN ? gOk / gN : 1, style = sN ? sOk / sN : 1, hErr = Math.abs((B - T) - x.height) / Math.max(1, x.height), same = x.nEls === els.length;
+    const approx = geom < 0.85 || hErr > 0.05 || !same;
+    const reason = !same ? 'The copy has a different number of elements than the original (' + els.length + ' vs ' + x.nEls + ')'
+      : hErr > 0.05 ? 'The copy is ' + Math.round(hErr * 100) + '% ' + ((B - T) > x.height ? 'taller' : 'shorter') + ' than the original'
+      : 'Only ' + Math.round(geom * 100) + '% of its boxes land where they do on the original';
+    return (x.fid = { approx, reason: approx ? reason : '', geom, style, hErr, n: gN });
+  } catch (e) { return (x.fid = { approx: true, reason: 'The check could not run: ' + String(e).slice(0, 80), geom: 0, style: 0, hErr: 1, n: 0 }); }
+  finally { f.remove(); }
+}
+
+function setEditBadge() { const b = $('editBadge'); if (!b || !dlgPart) return; const e = hasEdits(dlgPart.m); b.textContent = e ? 'edited' : 'not edited'; b.className = 'badge ' + (e ? 'moves' : ''); }
+let refreshT = null;
+function refreshCopy() {   // redraw the copy view shortly after the last change, without rebuilding the panel (keeps typing focus)
+  clearTimeout(refreshT);
+  refreshT = setTimeout(() => { if (!dlgPart) return; dlgView = 'copy'; showView(); document.querySelectorAll('#dlgS .seg2 button').forEach((b, i) => b.setAttribute('aria-pressed', String(i === 1))); }, 180);
+}
+function renderSide() {
+  const box = $('dlgS'); box.replaceChildren(); if (!dlgPart) return;
+  const { site, m } = dlgPart, x = m.x;
+  // 1. which view
+  box.append(h('div', null, h('h3', null, 'Showing'), h('div', { class: 'seg2', role: 'group', 'aria-label': 'Which view' },
+    h('button', { 'aria-pressed': String(dlgView === 'kit'), onclick: () => { dlgView = 'kit'; showView(); renderSide(); } }, 'As Site Kit uses it'),
+    h('button', { 'aria-pressed': String(dlgView === 'copy'), disabled: !x || !!x.error, onclick: () => { dlgView = 'copy'; showView(); renderSide(); } }, 'Extracted copy'))));
+  if (x && !x.error) box.append(h('div', { class: 'editbar' }, h('span', { id: 'editBadge', class: 'badge ' + (hasEdits(m) ? 'moves' : '') }, hasEdits(m) ? 'edited' : 'not edited'),
+    h('span', null, 'Edits change the extracted copy; edited parts are drawn from it.'), h('button', { class: 'btn small', id: 'editReset', onclick: () => { resetEdits(m); dlgView = 'copy'; showView(); renderSide(); } }, 'Reset my edits'), h('button', { class: 'btn small', id: 'undoBtn', title: 'Undo (Ctrl+Z)', onclick: () => undo() }, '↶ Undo'), h('button', { class: 'btn small', id: 'redoBtn', title: 'Redo (Ctrl+Shift+Z)', onclick: () => redo() }, '↷ Redo')));
+  updateHistBtns();
+  // 2. confidence: sure / not sure, always visible
+  const sure = isSure(m), alts = Object.entries(m.scores || {}).sort((a, b) => b[1] - a[1]).filter(e => e[0] !== m.role).slice(0, 2);
+  box.append(h('div', null, h('h3', null, 'Is this the right kind?'),
+    h('div', { class: 'row' }, h('span', { class: 'badge ' + (sure ? 'ok' : 'warn'), id: 'sureBadge' }, m.userSet ? 'sure (you set it)' : sure ? 'sure' : 'not sure'), h('span', { style: 'color:var(--mut)' }, 'called “' + roleLabel(m.role) + '”, confidence ' + m.conf.toFixed(2))),
+    sure ? null : h('p', { style: 'margin:6px 0 0;color:var(--warn)' }, 'This is a guess' + (alts.length ? '; it could also be ' + alts.map(a => '“' + roleLabel(a[0]) + '”').join(' or ') : '') + '. Change it in the parts list if it is wrong.')));
+  if (!x || x.error || site.xstate !== 'done') {
+    box.append(h('div', null, h('h3', null, 'Details'), h('div', { style: 'color:var(--mut)' }, x && x.error ? 'Could not read this part’s styles (' + x.error + ').' : site.xstate === 'failed' ? 'Could not read this site’s styles' + (site.xerror ? ' (' + site.xerror + ')' : '') + '.' : 'Reading this part’s details…')));
+    return;
+  }
+  // 3. copy quality: never silently "good"
+  const fid = x.fid, reasons = approxReasons(site, m), checking = !fid;
+  if (checking) checkFidelity(m).then(() => { if (dlgPart && dlgPart.m === m) renderSide(); renderParts(); });
+  box.append(h('div', null, h('h3', null, 'Is the copy exact?'),
+    h('div', { class: 'row' }, h('span', { class: 'badge ' + (checking ? '' : reasons.length ? 'warn' : 'ok'), id: 'fidBadge' }, checking ? 'checking…' : reasons.length ? 'approximate' : 'exact'),
+      fid && fid.n ? h('span', { style: 'color:var(--mut)' }, Math.round(fid.geom * 100) + '% of boxes line up · ' + Math.round(fid.style * 100) + '% of styles match') : null),
+    reasons.length ? h('ul', { class: 'why' }, ...reasons.map(r => h('li', null, r))) : null));
+  // 4. dials
+  const ed = m.edit || {}, dd = ed.dials || {}, ss = ed.slots || {};
+  const touch = () => { recordEdit(m, true); setEditBadge(); refreshCopy(); updateHistBtns(); };
+  const dialCtl = d => {
+    const cur = dd[d.key], has = !!d.v || d.kind === 'num' && d.key !== 'radius' && false;
+    if (d.kind === 'color') { if (!d.v) return h('span', { class: 't' }, d.none || '—');
+      const sw = h('input', { type: 'color', value: asHex(cur || d.v), 'aria-label': d.k, oninput: e => { setDial(m, d.key, e.target.value); txt.textContent = e.target.value; e.target.closest('.dial').classList.add('edited'); touch(); } }), txt = h('span', { class: 't', title: d.v }, cur || d.v); return [sw, txt]; }
+    if (d.kind === 'font') { if (!d.v) return h('span', { class: 't' }, d.none || '—');
+      return h('input', { type: 'text', list: 'fontOpts', value: cur != null ? cur : d.v, 'aria-label': d.k, onchange: e => { const val = e.target.value.trim(); setDial(m, d.key, val && val !== d.v ? val : null); e.target.closest('.dial').classList.toggle('edited', !!(m.edit && m.edit.dials[d.key])); touch(); } }); }
+    if (!d.v) return h('span', { class: 't' }, d.none || '—');
+    return [h('input', { type: 'number', min: 0, max: 240, step: 1, value: cur != null ? cur : Math.round(px(d.v)), 'aria-label': d.k, onchange: e => { const n = +e.target.value; setDial(m, d.key, isNaN(n) || n === Math.round(px(d.v)) ? null : n); e.target.closest('.dial').classList.toggle('edited', !!(m.edit && m.edit.dials[d.key])); touch(); } }), h('span', { style: 'color:var(--mut);font-weight:400' }, 'px')];
+  };
+  const fontList = h('datalist', { id: 'fontOpts' }, ...['Georgia, serif', 'Helvetica Neue, Arial, sans-serif', 'system-ui, sans-serif', 'Times New Roman, serif', 'Courier New, monospace', 'Trebuchet MS, sans-serif', 'Verdana, sans-serif'].map(f => h('option', { value: f })));
+  box.append(h('div', null, h('h3', null, 'Dials (change a value to restyle the part)'), h('div', { class: 'dials' }, ...dialsOf(x).map(d =>
+    h('div', { class: 'dial' + (dd[d.key] != null ? ' edited' : '') }, h('div', { class: 'k' }, d.k),
+      h('div', { class: 'v' + (d.v ? '' : ' none') }, dialCtl(d)),
+      d.note && d.v ? h('div', { class: 'n' }, d.note) : null))), fontList,
+    (() => { const others = Object.entries(x.tokens.colors).filter(([k]) => /^sk-c\d+$/.test(k)); return others.length ? h('div', { class: 'row', style: 'margin-top:8px' }, h('span', { style: 'color:var(--mut);font-size:11px' }, 'Other colours'), ...others.map(([k, v]) => h('span', { class: 'sw2', title: v }, h('i', { style: 'background:' + v })))) : null; })(),
+    h('div', { style: 'margin-top:6px;color:var(--mut);font-size:11px' }, 'Colours and fonts move only what the extractor wired to the dials. Sizes apply to all headings / body text; corner radius skips circles and pills.')));
+  const SS = () => (m.edit && m.edit.slots) || {};
+  const SX = x.slots;
+  const readFile = (inp, done) => { const f = inp.files[0]; if (!f) return; if (f.size > 3e6) { inp.value = ''; inp.title = 'That file is over 3 MB'; return; } const r = new FileReader(); r.onload = () => done(String(r.result)); r.readAsDataURL(f); };
+  // 4b. a gradient or background picture the Background dial cannot reach
+  if (SX.bgLayer) { const L = SX.bgLayer, wrap = h('div', { class: 'stack', id: 'bgLayer' });
+    const cur = () => (m.edit && m.edit.dials.bgLayer) || { mode: 'keep' }, save = o => { setDial(m, 'bgLayer', o.mode === 'keep' ? null : o); touch(); }, upd = p => save(Object.assign({}, cur(), p));
+    const col = (v, f, lab) => h('input', { type: 'color', value: asHex(v), 'aria-label': lab, oninput: e => f(e.target.value) });
+    const draw = () => { const c = cur(), a0 = asHex(L.colors[0]), b0 = asHex(L.colors[L.colors.length - 1] || L.colors[0]);
+      const sel = h('select', { id: 'bgMode', 'aria-label': 'Background picture or gradient', onchange: e => { const mode = e.target.value; save(mode === 'keep' ? { mode } : mode === 'gradient' ? { mode, a: a0, b: b0, angle: L.angle } : mode === 'color' ? { mode, color: a0 } : { mode, src: '' }); draw(); } },
+        ...[['keep', 'Keep the site’s ' + (L.kind === 'gradient' ? 'gradient' : 'picture')], ['gradient', 'Two-colour gradient'], ['color', 'Flat colour'], ['picture', 'A picture']].map(([v, l]) => h('option', { value: v, selected: c.mode === v }, l)));
+      const more = c.mode === 'gradient' ? h('div', { class: 'row' }, col(c.a, v => upd({ a: v }), 'Gradient start'), col(c.b, v => upd({ b: v }), 'Gradient end'), h('input', { type: 'number', min: 0, max: 360, value: c.angle, 'aria-label': 'Gradient angle', style: 'width:64px', onchange: e => upd({ angle: +e.target.value || 0 }) }), h('span', { class: 'sub' }, 'degrees'))
+        : c.mode === 'color' ? h('div', { class: 'row' }, col(c.color, v => upd({ color: v }), 'Flat colour'))
+        : c.mode === 'picture' ? h('div', { class: 'stack' }, h('input', { type: 'text', placeholder: 'picture address', value: c.src && !c.src.startsWith('data:') ? c.src : '', 'aria-label': 'Background picture address', onchange: e => upd({ src: e.target.value.trim() }) }),
+            h('input', { type: 'file', accept: 'image/*', 'aria-label': 'Choose background picture', onchange: e => readFile(e.target, v => upd({ src: v })) })) : null;
+      wrap.replaceChildren(...[sel, more].filter(Boolean)); };
+    draw(); box.append(h('div', null, h('h3', null, 'Background ' + (L.kind === 'gradient' ? 'gradient' : 'picture')), wrap)); }
+  // 5. slots: every heading, paragraph, button, picture, plus the repeated cards
+  const S = x.slots, slot = (k, v, ctl) => h('div', { class: 'slot' }, h('div', { class: 'k' }, k), h('div', { class: 'v' + (v ? '' : ' none') }, ctl || (v === 'x' ? 'none' : v) || 'none'));
+  const more3 = (items, what) => h('div', { class: 'stack' }, ...items.slice(0, 3), items.length > 3 ? h('details', null, h('summary', { class: 'sub' }, 'Show ' + (items.length - 3) + ' more ' + what), h('div', { class: 'stack' }, ...items.slice(3))) : null);
+  const listCtl = (key, arr, rows) => { if (!arr || !arr.length) return null;
+    return more3(arr.map((from, i) => h('textarea', { rows, 'aria-label': key + ' ' + (i + 1), oninput: e => { const E = ensureEdit(m), o = E.slots[key] = E.slots[key] || {}; if (e.target.value === from) delete o[i]; else o[i] = { from, to: e.target.value }; if (!Object.keys(o).length) delete E.slots[key]; touch(); } }, ((SS()[key] || {})[i] || {}).to != null ? SS()[key][i].to : from)), key); };
+  const btnCtl = S.buttons.length ? h('div', { class: 'stack' }, ...S.buttons.map((b, i) => { const cur = (SS().buttons || {})[i] || {}, upd = (lab, href) => { const e = ensureEdit(m); e.slots.buttons = e.slots.buttons || {}; if (lab === b.label && (href == null || href === (b.href || ''))) delete e.slots.buttons[i]; else e.slots.buttons[i] = { from: b.label, to: lab, href }; if (!Object.keys(e.slots.buttons).length) delete e.slots.buttons; touch(); };
+      const lab = h('input', { type: 'text', value: cur.to != null ? cur.to : b.label, 'aria-label': 'Button ' + (i + 1) + ' label' }), href = h('input', { type: 'text', value: cur.href != null ? cur.href : (b.href || ''), placeholder: 'link', 'aria-label': 'Button ' + (i + 1) + ' link', disabled: b.href == null });
+      lab.oninput = href.oninput = () => upd(lab.value, b.href == null ? null : href.value); return h('div', { class: 'stack' }, lab, href); })) : null;
+  const imgCtl = S.imgAll && S.imgAll.length ? more3(S.imgAll.map((src, i) => { const cur = ((SS().images || {})[i] || {}).to != null ? SS().images[i].to : src;
+      const set = v => { const E = ensureEdit(m), o = E.slots.images = E.slots.images || {}; if (!v || v === src) delete o[i]; else o[i] = { from: src, to: v }; if (!Object.keys(o).length) delete E.slots.images; touch(); };
+      const url = h('input', { type: 'text', value: cur.startsWith('data:') ? (((SS().images || {})[i] || {}).to != null ? '(uploaded picture)' : '(picture embedded in the page)') : cur, 'aria-label': 'Picture ' + (i + 1) + ' address', onchange: e => set(e.target.value.trim()) });
+      return h('div', { class: 'stack' }, url, h('input', { type: 'file', accept: 'image/*', 'aria-label': 'Choose picture ' + (i + 1), onchange: e => readFile(e.target, v => { url.value = '(uploaded picture)'; set(v); }) })); }), 'pictures') : null;
+  const cardCtl = ci => { if (!ci) return null; const wrap = h('div', { class: 'stack', id: 'cardList' });
+    const order = () => SS().cards && SS().cards.order ? SS().cards.order.slice() : ci.idx.map((_, k) => k);
+    const save = ord => { const E = ensureEdit(m), same = ord.length === ci.idx.length && ord.every((v, k) => v === k); if (same) delete E.slots.cards; else E.slots.cards = { path: ci.path, idx: ci.idx, order: ord }; draw(); touch(); };
+    const btn = (t, title, dis, fn) => h('button', { class: 'btn small', title, 'aria-label': title, disabled: dis, onclick: fn }, t);
+    const draw = () => { const ord = order(); wrap.replaceChildren(...ord.map((k, pos) => h('div', { class: 'cardrow' }, h('span', { class: 't' }, (pos + 1) + '. ' + ci.labels[k]),
+      btn('↑', 'Move card up', pos === 0, () => { const o = order(); [o[pos - 1], o[pos]] = [o[pos], o[pos - 1]]; save(o); }),
+      btn('↓', 'Move card down', pos === ord.length - 1, () => { const o = order(); [o[pos + 1], o[pos]] = [o[pos], o[pos + 1]]; save(o); }),
+      btn('⧉', 'Duplicate card', ord.length >= 24, () => { const o = order(); o.splice(pos + 1, 0, k); save(o); }),
+      btn('✕', 'Remove card', ord.length <= 1, () => { const o = order(); o.splice(pos, 1); save(o); }))), h('div', { class: 'sub' }, ord.length + ' cards')); };
+    draw(); return wrap; };
+  const imgTxt = S.images || S.bgImages || S.svgs ? [S.images ? S.images + ' picture' + (S.images > 1 ? 's' : '') : '', S.bgImages ? S.bgImages + ' background' + (S.bgImages > 1 ? 's' : '') : '', S.svgs ? S.svgs + ' icon' + (S.svgs > 1 ? 's' : '') : ''].filter(Boolean).join(', ') : null;
+  box.append(h('div', null, h('h3', null, 'Slots (edit every heading, paragraph, button, picture; add or remove cards)'), h('div', { class: 'slots', id: 'slotList' },
+    slot('Headline', S.headAll && S.headAll.length ? 'x' : null, listCtl('headings', S.headAll, 2)),
+    slot('Paragraph', S.paraAll && S.paraAll.length ? 'x' : null, listCtl('paragraphs', S.paraAll, 3)),
+    slot('Button', S.buttons.length ? 'x' : null, btnCtl),
+    slot('Image', imgTxt, imgCtl ? h('div', { class: 'stack' }, h('div', { class: 'sub' }, imgTxt), imgCtl) : null),
+    slot('Repeated card', S.cards >= 3 ? S.cards + ' look-alike items in a row or grid' : null, S.cardInfo ? h('div', { class: 'stack' }, h('div', { class: 'sub' }, S.cards + ' look-alike items'), cardCtl(S.cardInfo)) : null))));
+  // 6. motion: what the site has, and a simple preset to replace it with
+  box.append(h('div', null, h('h3', null, 'Motion'), h('div', { class: 'row', id: 'motionList' }, ...motionLabels(x.motion).map(l => h('span', { class: 'badge moves' }, l))),
+    h('div', { class: 'row', style: 'margin-top:6px' }, h('span', { style: 'color:var(--mut);font-size:11px' }, 'Use instead'), h('select', { id: 'motionSel', 'aria-label': 'Motion preset', onchange: e => { setMotion(m, e.target.value); touch(); } }, ...MOTION_PRESETS.map(([v, l]) => h('option', { value: v, selected: (ed.motion || 'keep') === v }, l))))));
+  // 7. fonts that the font dial cannot reach
+  const st = x.stats;
+  box.append(h('div', null, h('h3', null, 'Fonts'), h('div', { id: 'fontLine' }, !st.fontDecls ? 'This part sets no font of its own.' : st.fontHard.length ? st.fontWired + ' of ' + st.fontDecls + ' font rules follow the font dials. Still hard-coded: ' + st.fontHard.join(', ') + '.' : 'All ' + st.fontDecls + ' font rules follow the font dials.')));
+}
+function showView() {
+  const { site, m } = dlgPart, x = m.x, copy = dlgView === 'copy' && x && !x.error;
+  const H = Math.min(2400, Math.max(300, m.height + 40));
+  const f = h('iframe', { title: 'Preview of this part', sandbox: 'allow-same-origin', style: 'border:0;background:#fff;width:1440px;height:' + H + 'px;transform:scale(.5);transform-origin:top center;margin-bottom:-' + Math.round(H * 0.5) + 'px' });
+  if (copy) f.onload = () => { try { const hh = Math.min(4000, Math.max(300, f.contentDocument.documentElement.scrollHeight + 8)); f.style.height = hh + 'px'; f.style.marginBottom = '-' + Math.round(hh * 0.5) + 'px'; } catch (e) {} };   // an edited copy can be taller than the original (more cards)
+  f.srcdoc = copy ? partDoc(m, { csp: true }) : docFor(site, emitGroup(site, [m]), { reveal: true });
+  $('dlgB').replaceChildren(f);
+}
+function openPartPreview(site, m) {
+  dlgPart = { site, m }; dlgView = 'kit';
+  $('dlgT').textContent = roleLabel(m.role) + ' — from ' + site.name;
+  showView(); renderSide(); $('dlg').showModal();
+}
+$('dlgX').onclick = () => { $('dlg').close(); dlgPart = null; };
+$('dlg').addEventListener('close', () => { dlgPart = null; const sc = document.querySelector('.col.left'), top = sc.scrollTop; renderParts(); sc.scrollTop = top; renderOutline(); renderPreview(); });
+$('dlgAdd').onclick = () => { if (dlgPart) addBlock(dlgPart.site, dlgPart.m); $('dlg').close(); };
+
+/* Font report: which parts still carry fonts the font dial cannot change */
+function fontReport() {
+  const sites = state.sites.filter(s => s.status === 'ready').map(s => {
+    const parts = modsOf(s).map((m, i) => ({ n: i + 1, role: m.role, st: m.x && m.x.stats && m.x.stats.fontDecls !== undefined ? m.x.stats : null })).filter(p => p.st);
+    const decls = parts.reduce((a, p) => a + p.st.fontDecls, 0), wired = parts.reduce((a, p) => a + p.st.fontWired, 0);
+    return { name: s.name, state: s.xstate, parts, decls, wired, hardParts: parts.filter(p => p.st.fontHard.length) };
+  });
+  const decls = sites.reduce((a, s) => a + s.decls, 0), wired = sites.reduce((a, s) => a + s.wired, 0);
+  return { sites, decls, wired, parts: sites.reduce((a, s) => a + s.parts.length, 0), hardParts: sites.reduce((a, s) => a + s.hardParts.length, 0) };
+}
+function openFontReport() {
+  const R = fontReport(), box = $('fontB'); box.replaceChildren();
+  if (!R.sites.length) box.append(h('div', { class: 'empty' }, 'Add a website first.'));
+  else {
+    box.append(h('div', { class: 'sum', id: 'fontSum' }, R.decls ? 'Across everything loaded, ' + R.wired + ' of ' + R.decls + ' font rules (' + Math.round(100 * R.wired / R.decls) + '%) follow the font dials, and ' + R.hardParts + ' of ' + R.parts + ' parts still carry hard-coded fonts. Shorthand “font:” rules are included and count as not wired.' : 'No font rules found yet.'));
+    R.sites.forEach(s => {
+      box.append(h('h3', null, s.name + (s.state !== 'done' ? ' (still reading details…)' : '')));
+      if (!s.hardParts.length) { box.append(h('div', { style: 'color:var(--mut);margin-bottom:10px' }, s.state === 'done' ? 'Every part’s fonts follow the dials.' : 'Nothing yet.')); return; }
+      box.append(h('table', null, h('thead', null, h('tr', null, ...['Part', 'Wired', 'Hard-coded fonts'].map(c => h('th', null, c)))),
+        h('tbody', null, ...s.hardParts.map(p => h('tr', null, h('td', null, '#' + p.n + ' ' + roleLabel(p.role)), h('td', null, p.st.fontWired + ' of ' + p.st.fontDecls), h('td', null, p.st.fontHard.join(', ')))))));
+    });
+  }
+  $('fontDlg').showModal();
+}
+function fontCsv() {
+  const q = v => '"' + String(v).replace(/"/g, '""') + '"', rows = [['site', 'part', 'kind', 'font_rules', 'wired', 'hard_coded_fonts']];
+  fontReport().sites.forEach(s => s.parts.forEach(p => rows.push([s.name, p.n, roleLabel(p.role), p.st.fontDecls, p.st.fontWired, p.st.fontHard.join(' | ')])));
+  return rows.map(r => r.map(q).join(',')).join('\n');
+}
+/* Check every part: copy vs original, one row per part. Drop your sites in, press the button, read the CSV. */
+async function checkAll() {
+  const rows = [['site', 'part', 'kind', 'sure', 'copy', 'why', 'boxes_line_up_%', 'styles_match_%']];
+  for (const s of state.sites) for (const m of modsOf(s)) {
+    if (!m.x || m.x.error) { rows.push([s.name, m.id, roleLabel(m.role), isSure(m) ? 'sure' : 'not sure', 'no copy', m.x ? m.x.error : 'site not extracted', '', '']); continue; }
+    await checkFidelity(m); const r = approxReasons(s, m), f = m.x.fid;
+    rows.push([s.name, m.x.id, roleLabel(m.role), isSure(m) ? 'sure' : 'not sure', r.length ? 'approximate' : 'exact', r.join(' | '), f && f.n ? Math.round(f.geom * 100) : '', f && f.n ? Math.round(f.style * 100) : '']);
+  }
+  return rows;
+}
+$('checkBtn').onclick = async () => { const b = $('checkBtn'), t0 = b.textContent; b.disabled = true; b.textContent = 'Checking…';
+  try { const q = v => '"' + String(v).replace(/"/g, '""') + '"', rows = await checkAll(), a = h('a', { href: URL.createObjectURL(new Blob([rows.map(r => r.map(q).join(',')).join('\n')], { type: 'text/csv' })), download: 'part-check.csv' }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); renderParts(); } finally { b.disabled = false; b.textContent = t0; } };
+$('fontBtn').onclick = openFontReport; $('fontX').onclick = () => $('fontDlg').close();
+$('fontCsv').onclick = () => { const a = h('a', { href: URL.createObjectURL(new Blob([fontCsv()], { type: 'text/csv' })), download: 'font-report.csv' }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
+
+/* files */
+async function handleFiles(files) { for (const f of files) { const text = await f.text(); await addSite(f.name, text); } }
+$('pick').onclick = () => $('file').click();
+$('file').onchange = e => { handleFiles(Array.from(e.target.files)); e.target.value = ''; };
+const drop = $('drop');
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => handleFiles(Array.from(e.dataTransfer.files)));
+$('pasteGo').onclick = () => { const v = $('pasteBox').value.trim(); if (v) { addSite('Pasted page ' + state.nextSite, v); $('pasteBox').value = ''; } };
+
+$('search').oninput = e => { state.query = e.target.value; renderParts(); };
+$('filters').onchange = e => { state.filter = e.target.value; renderParts(); };
+$('devices').onclick = e => { const b = e.target.closest('button'); if (!b) return; state.device = +b.dataset.w; [...$('devices').children].forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderPreview(); };
+$('anim').onchange = e => { state.anim = e.target.checked; renderPreview(); };
+addEventListener('resize', renderPreview);
+
+$('tplGo').onclick = () => applyPicked(fillSlots(TEMPLATES[$('tpl').value].map(role => ({ role }))));
+$('intentGo').onclick = () => {
+  let j; try { j = JSON.parse($('intent').value); } catch (e) { state.notes = [{ t: 'That JSON isn’t valid: ' + e.message }]; return renderOutline(); }
+  applyPicked(fillSlots((j.slots || []).map(s => ({ role: s.role, source: s.source }))));
+};
+$('clearPage').onclick = () => { state.blocks = []; state.notes = []; renderAll(); };
+$('optDoc').onchange = e => { state.export.mode = e.target.checked ? 'document' : 'iframes'; renderPreview(); };
+$('optBeh').onchange = e => { state.export.behaviours = e.target.checked; renderPreview(); };
+$('download').onclick = () => {
+  const html = composePage(state.blocks);
+  const a = h('a', { href: URL.createObjectURL(new Blob([html], { type: 'text/html' })), download: 'my-website.html' });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+};
+
+
+/* =====================================================================
+   7. PROJECT MODE: several pages, links resolved between them, one downloadable folder (project.json + page files)
+   ===================================================================== */
+state.project = { name: 'my-website', origin: '', originSure: false, resolveLinks: false, rules: {}, pages: [{ id: 'home', name: 'Home', file: 'index.html', sourceUrl: '/', blocks: null }], cur: 0 };
+const project = state.project;
+const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'page';
+function commitPage() { project.pages[project.cur].blocks = state.blocks; }
+function blocksOfPage(i) { return i === project.cur ? state.blocks : (project.pages[i].blocks || []); }
+function switchPage(i) { if (i < 0 || i >= project.pages.length || i === project.cur) return; commitPage(); project.cur = i; state.blocks = project.pages[i].blocks || []; state.notes = []; renderAll(); }
+function addPage(name, sourceUrl) {
+  let id = slug(name), n = 2; while (project.pages.some(p => p.id === id)) id = slug(name) + '-' + n++;
+  const su = sourceUrl != null && sourceUrl !== '' ? (sourceUrl.charAt(0) === '/' ? sourceUrl : '/' + sourceUrl) : '/' + id;
+  project.pages.push({ id, name: name || id, file: id + '.html', sourceUrl: su, blocks: [] }); return project.pages.length - 1;
+}
+function removePage(i) { if (project.pages.length < 2) return false; commitPage(); const wasCur = project.cur; project.pages.splice(i, 1); project.cur = Math.min(wasCur > i ? wasCur - 1 : wasCur, project.pages.length - 1); state.blocks = project.pages[project.cur].blocks || []; renderAll(); return true; }
+function ensureOrigin() {
+  if (project.origin) return;
+  for (let i = 0; i < project.pages.length; i++) for (const b of blocksOfPage(i)) { const d = new DOMParser().parseFromString(b.site.html, 'text/html'), g = guessOrigin(d); if (g.origin) { project.origin = g.origin; project.originSure = g.sure; return; } }
+}
+function pageCtx(p, sink) { return { origin: project.origin, pages: project.pages.map(q => ({ id: q.id, file: q.file, sourceUrl: q.sourceUrl })), file: p.file, here: p.sourceUrl, rules: project.rules, sink }; }
+/* every link of every page, with what the resolver would do. Read-only. */
+function linkReport() {
+  ensureOrigin(); const out = [];
+  project.pages.forEach((p, i) => { const bl = blocksOfPage(i); if (!bl.length) return; const sink = []; composePage(bl, { links: pageCtx(p, sink) }); sink.forEach(r => out.push(Object.assign({ pageId: p.id }, r))); });
+  return out;
+}
+function projectJson() {
+  return { name: project.name, origin: project.origin || null, pages: project.pages.map(p => ({ id: p.id, name: p.name, file: p.file, sourceUrl: p.sourceUrl })), products: [], payments: { enabled: false }, export: { mode: state.export.mode, behaviours: state.export.behaviours }, links: { resolve: project.resolveLinks, rules: project.rules } };
+}
+function exportProject() {
+  commitPage(); ensureOrigin(); const files = [];
+  project.pages.forEach((p, i) => { const bl = blocksOfPage(i); if (!bl.length) return; files.push({ path: p.file, content: composePage(bl, project.resolveLinks ? { links: pageCtx(p) } : {}) }); });
+  files.push({ path: 'project.json', content: JSON.stringify(projectJson(), null, 2) });
+  if (project.resolveLinks) { const q = v => '"' + String(v).replace(/"/g, '""') + '"'; files.push({ path: 'link-report.csv', content: ['page,status,original,now,text'].concat(linkReport().map(r => [r.pageId, r.status, r.href, r.to, r.text].map(q).join(','))).join('\n') }); }
+  return files;
+}
+/* a minimal zip writer (no compression), enough for text files */
+const CRC_T = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  const u16 = n => [n & 255, (n >>> 8) & 255], u32 = n => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255];
+  files.forEach(f => { const name = enc.encode(f.path), data = enc.encode(f.content), crc = crc32(data);
+    const head = Uint8Array.from([0x50, 0x4b, 3, 4, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), 0, 0]);
+    parts.push(head, name, data);
+    central.push(Uint8Array.from([0x50, 0x4b, 1, 2, 20, 0, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u32(off)]), name);
+    off += head.length + name.length + data.length; });
+  const cdSize = central.reduce((a, b) => a + b.length, 0);
+  const end = Uint8Array.from([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...u16(files.length), ...u16(files.length), ...u32(cdSize), ...u32(off), 0, 0]);
+  return new Blob([...parts, ...central, end], { type: 'application/zip' });
+}
+function renderProject() {
+  const B = $('projB'); if (!B) return; B.replaceChildren();
+  const row = (...k) => h('div', { class: 'row', style: 'gap:8px;align-items:center;margin:6px 0' }, ...k);
+  B.append(row(h('label', { for: 'projName' }, 'Project name'), h('input', { id: 'projName', type: 'text', value: project.name, onchange: e => { project.name = slug(e.target.value); } })));
+  ensureOrigin();
+  B.append(row(h('label', { for: 'projOrigin' }, 'Original website'), h('input', { id: 'projOrigin', type: 'text', value: project.origin, placeholder: 'https://the-original-site.com', style: 'min-width:260px', onchange: e => { project.origin = e.target.value.trim().replace(/\/+$/, ''); project.originSure = true; renderProject(); } }),
+    h('span', { class: 'sub' }, project.origin ? (project.originSure ? 'found in the page' : 'a guess: the most linked-to site. Change it if wrong.') : 'unknown: links to the original cannot be told apart')));
+  B.append(row(h('label', null, h('input', { id: 'projLinks', type: 'checkbox', checked: project.resolveLinks, onchange: e => { project.resolveLinks = e.target.checked; } }), ' Resolve links on export (same-site links point at your pages)')));
+  B.append(h('h3', null, 'Pages'));
+  const list = h('div', { id: 'projPages' });
+  project.pages.forEach((p, i) => list.append(row(h('b', { style: 'min-width:90px' }, p.name + (i === project.cur ? ' (editing)' : '')),
+    h('input', { type: 'text', value: p.sourceUrl, 'aria-label': 'Original address of ' + p.name, title: 'The address this page had on the original site, e.g. /about. Links to it are pointed here.', style: 'width:150px', onchange: e => { p.sourceUrl = e.target.value.trim() || '/'; renderProject(); } }),
+    h('span', { class: 'sub' }, p.file + ' · ' + blocksOfPage(i).length + ' parts'),
+    i === project.cur ? null : h('button', { class: 'btn small', onclick: () => { switchPage(i); renderProject(); } }, 'Edit this page'),
+    project.pages.length > 1 ? h('button', { class: 'btn small', 'aria-label': 'Remove page ' + p.name, onclick: () => { removePage(i); renderProject(); } }, '✕') : null)));
+  B.append(list, row(h('input', { id: 'projNewName', type: 'text', placeholder: 'New page name, e.g. About' }), h('button', { class: 'btn small', id: 'projAdd', onclick: () => { const n = $('projNewName').value.trim(); if (!n) return; addPage(n); renderProject(); } }, '+ Add page')));
+  const rep = linkReport(), S = summarizeLinks(rep);
+  B.append(h('h3', null, 'Links'), h('div', { id: 'projSummary', class: 'sub' }, S.total ? S.total + ' links: ' + S.page + ' to your pages, ' + S.anchor + ' in-page, ' + S.external + ' to other sites, ' + S.contact + ' mail/phone, ' + S.dead + ' dead, ' + (S['original-kept'] || 0) + ' kept as original. ' + S.original + ' still point at the original site' + (S['anchor-missing'] ? ', ' + S['anchor-missing'] + ' point at a missing section' : '') + '.' : 'Add parts to a page to see its links.'));
+  const open = rep.filter(r => r.status === 'original' || r.status === 'anchor-missing'), seen = new Set(), tbl = h('div', { id: 'projReport', class: 'stack' });
+  open.forEach(r => { if (seen.has(r.href)) return; seen.add(r.href); const n = open.filter(x => x.href === r.href).length, cur = project.rules[r.href];
+    const sel = h('select', { 'aria-label': 'What to do with ' + r.href, onchange: e => { const v = e.target.value; if (v === '') delete project.rules[r.href]; else if (v === 'keep' || v === 'remove') project.rules[r.href] = { action: v }; else if (v.startsWith('page:')) project.rules[r.href] = { action: 'page', target: v.slice(5) }; else if (v === 'anchor') { const a = prompt('Section id to point at (without #)'); if (a) project.rules[r.href] = { action: 'anchor', target: a }; } renderProject(); } },
+      h('option', { value: '' }, 'Decide…'), h('option', { value: 'keep' }, 'Keep pointing at the original'), ...project.pages.map(p => h('option', { value: 'page:' + p.id }, 'Point at page: ' + p.name)), h('option', { value: 'anchor' }, 'Make it an in-page anchor…'), h('option', { value: 'remove' }, 'Remove the link'));
+    sel.value = cur ? (cur.action === 'page' ? 'page:' + cur.target : cur.action) : '';
+    tbl.append(row(h('code', { style: 'min-width:220px' }, r.href.slice(0, 60)), h('span', { class: 'sub' }, '× ' + n + (r.text ? ' · “' + r.text.slice(0, 24) + '”' : '')), sel)); });
+  B.append(tbl);
+  B.append(row(h('button', { class: 'btn primary', id: 'projZip', onclick: () => { const blob = makeZip(exportProject()), a = h('a', { href: URL.createObjectURL(blob), download: project.name + '.zip' }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); } }, 'Download project (.zip)')));
+}
+$('projBtn').onclick = () => { commitPage(); renderProject(); $('projDlg').showModal(); };
+$('projX').onclick = () => { $('projDlg').close(); renderAll(); };
+
+/* test hook: lets automated tests drive the same code the buttons use */
+function updateHistBtns() { const u = $('undoBtn'), r = $('redoBtn'); if (u) u.disabled = !HIST.undo.length; if (r) r.disabled = !HIST.redo.length; }
+addEventListener('keydown', e => { if (!(e.ctrlKey || e.metaKey) || e.altKey) return; const k = e.key.toLowerCase(); if (k !== 'z' && k !== 'y') return;
+  const el = document.activeElement; if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || (el && el.isContentEditable)) return;    // inside a box the browser's own undo wins
+  e.preventDefault(); (k === 'y' || e.shiftKey) ? redo() : undo(); });
+window.SiteKit = { composeDocument, withBehaviours, skAnnotate, undo, redo, history, clearHistory, project, addPage, switchPage, removePage, linkReport, exportProject, projectJson, makeZip, guessOrigin, classifyHref, resolveLinks, summarizeLinks, renderOffscreen, state, addSite, composePage, modsOf, segmentDocument, emitGroup, docFor, ROLES, SURE_AT, isSure, dialsOf, motionLabels, checkFidelity, approxReasons, fontReport, fontCsv, classifyV2, copyDoc, checkAll, setDial, setSlot, setMotion, resetEdits, hasEdits, editedCopy, partDoc, MOTION_PRESETS };
+renderAll();
+</script>
+</body>
+</html>
