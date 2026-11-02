@@ -1,0 +1,44 @@
+// Stage 1.4: undo / redo of edits.   Usage: node tests/undo.test.js
+const { open } = require('./harness');
+let pass = 0, fail = 0; const ok = (c, m) => { c ? pass++ : fail++; console.log((c ? '  ok   ' : '  FAIL ') + m); };
+(async () => {
+  const t = await open({ sites: ['alpha'] }); const { page } = t; const q = s => page.locator(s);
+  await page.waitForFunction(() => SiteKit.state.sites.every(s => s.xstate === 'done'), null, { timeout: 30000 });
+  console.log('API: five edits, five undos');
+  const r = await page.evaluate(() => { const m = SiteKit.modsOf(SiteKit.state.sites[0]).find(x => x.role === 'hero'); const S = () => JSON.stringify(m.edit || null); const orig = S(), seen = [orig];
+    SiteKit.setDial(m, 'hSize', 70); seen.push(S()); SiteKit.setDial(m, 'bg', '#112233'); seen.push(S()); SiteKit.setSlot(m, 'headings', { 0: { from: 'a', to: 'New head' } }); seen.push(S()); SiteKit.setMotion(m, 'rise'); seen.push(S()); SiteKit.setDial(m, 'radius', 12); seen.push(S());
+    const out = { depth: SiteKit.history().undo, steps: [] };
+    for (let i = 0; i < 5; i++) { SiteKit.undo(); out.steps.push(S() === seen[4 - i]); }
+    out.back = S() === orig && !m.edit; out.canUndo = SiteKit.history().undo; out.canRedo = SiteKit.history().redo;
+    for (let i = 0; i < 5; i++) SiteKit.redo(); out.forward = S() === seen[5]; out.redoLeft = SiteKit.history().redo;
+    SiteKit.setDial(m, 'accent', '#ff0000'); out.redoCleared = SiteKit.history().redo; SiteKit.resetEdits(m); out.resetOk = !m.edit; SiteKit.undo(); out.resetUndone = hasAccent(m); function hasAccent(m) { return !!(m.edit && m.edit.dials.accent === '#ff0000'); } return out; });
+  ok(r.depth === 5, 'each API edit is one history step (' + r.depth + ')');
+  ok(r.steps.every(Boolean), 'every undo restores exactly the state before that edit');
+  ok(r.back && r.canUndo === 0 && r.canRedo === 5, 'after 5 undos the part is back to unedited (nothing left to undo, 5 to redo)');
+  ok(r.forward && r.redoLeft === 0, 'redo 5 times returns to the fully edited state');
+  ok(r.redoCleared === 0, 'a new edit clears the redo stack');
+  ok(r.resetOk && r.resetUndone, '"Reset my edits" is itself undoable');
+  console.log('UI: typing coalesces, buttons and keys work');
+  await page.evaluate(() => { SiteKit.clearHistory(); SiteKit.resetEdits(SiteKit.modsOf(SiteKit.state.sites[0]).find(x => x.role === 'hero')); SiteKit.clearHistory(); });
+  await q('#parts .part:has(.label:text-is("Big banner"))').first().locator('button:has-text("Look")').click(); await page.waitForTimeout(700);
+  const orig = await q('#slotList textarea').first().inputValue();
+  await q('#slotList textarea').first().pressSequentially('Hello world', { delay: 5 }); await page.waitForTimeout(500);
+  const typed = await q('#slotList textarea').first().inputValue();
+  ok((await page.evaluate(() => SiteKit.history().undo)) <= 2, 'typing a whole sentence is 1 step, not 11 (' + await page.evaluate(() => SiteKit.history().undo) + ')');
+  await q('#undoBtn').click(); await page.waitForTimeout(500);
+  ok((await q('#slotList textarea').first().inputValue()) === orig, 'Undo button puts the original words back in the box: "' + orig.slice(0, 30) + '"');
+  ok((await q('#editBadge').textContent()) === 'not edited', 'badge says "not edited" again');
+  await q('#redoBtn').click(); await page.waitForTimeout(500);
+  ok((await q('#slotList textarea').first().inputValue()) === typed, 'Redo button brings the typed text back');
+  await q('#dlgS .dial input[type=number]').first().focus(); await page.keyboard.press('Control+z'); await page.waitForTimeout(100);
+  ok((await q('#slotList textarea').first().inputValue()) === typed, 'Ctrl+Z inside a text box is left to the browser, not hijacked');
+  await q('#dlgB').click({ position: { x: 5, y: 5 }, force: true }).catch(() => {}); await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.keyboard.press('Control+z'); await page.waitForTimeout(500);
+  ok((await q('#slotList textarea').first().inputValue()) === orig, 'Ctrl+Z outside a box undoes');
+  await page.keyboard.press('Control+Shift+z'); await page.waitForTimeout(500);
+  ok((await q('#slotList textarea').first().inputValue()) === typed, 'Ctrl+Shift+Z redoes');
+  await q('#dlgX').click();
+  ok(await page.evaluate(() => { const m = SiteKit.modsOf(SiteKit.state.sites[0]).find(x => x.role === 'hero'); return SiteKit.composePage([{ uid: 1, site: SiteKit.state.sites[0], item: m }]).includes('Hello world'); }), 'the composed page follows the undo/redo state');
+  ok(t.errors.length === 0, 'no JavaScript errors' + (t.errors.length ? ': ' + t.errors.join(' | ') : ''));
+  console.log(`\n${pass} passed, ${fail} failed`); await t.close(); process.exit(fail ? 1 : 0);
+})().catch(e => { console.error(e); process.exit(2); });

@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>lazy</title><style>*{box-sizing:border-box}body{margin:0;font:16px/1.5 Arial,sans-serif;color:#222}header{display:flex;gap:24px;padding:18px 40px;background:#111;color:#fff}header a{color:#fff}.hero{padding:90px 60px;background:#eef}.gal{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:50px 40px}.gal img{width:100%;height:200px;object-fit:cover;background:#ddd}.band{height:300px;background:#ccc center/cover}footer{padding:40px 60px;background:#eee}</style></head><body>
+<header><a href="#">Home</a><a href="#">Work</a><a href="#">Contact</a></header>
+<section class="hero"><h1>Lazy gallery</h1><p>Every picture below loads only after a script runs.</p></section>
+<section class="gal">
+<img class="lazyload" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGO4o6GBFTEMLQkAe3tLAfuiUfAAAAAASUVORK5CYII=" alt="a">
+<img loading="lazy" data-src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGPQWOCGFTEMLQkAWM5DgW///cAAAAAASUVORK5CYII=" alt="b">
+<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-srcset="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGO4o6GBFTEMLQkAe3tLAfuiUfAAAAAASUVORK5CYII= 1x" alt="c">
+<picture><source data-srcset="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGPQWOCGFTEMLQkAWM5DgW///cAAAAAASUVORK5CYII=" type="image/png"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGPQWOCGFTEMLQkAWM5DgW///cAAAAAASUVORK5CYII=" alt="d"></picture>
+<img loading="lazy" alt="never gets a source">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGO4o6GBFTEMLQkAe3tLAfuiUfAAAAAASUVORK5CYII=" alt="already real">
+</section>
+<section class="band" data-bg="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGPQWOCGFTEMLQkAWM5DgW///cAAAAAASUVORK5CYII="><h2 style="margin:0;padding:40px">Background by data-bg</h2></section>
+<footer><p>© 2026 Lazy Inc. All rights reserved.</p><a href="#">Privacy</a> <a href="#">Terms</a> <a href="#">Contact</a></footer>
+</body></html>

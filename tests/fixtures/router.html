@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>spa</title><style>*{box-sizing:border-box}body{margin:0;font:16px/1.4 Arial,sans-serif;color:#222}header,footer{padding:20px 40px;background:#223;color:#fff}header a{color:#fff;margin-right:14px}.spa-page{display:none}.spa-page.active{display:block}.hero{padding:60px 40px;min-height:500px;background:#eef}.block{padding:40px;min-height:400px}</style></head><body>
+<header><b>Spa Co</b> <a href="#/">Home</a><a href="#/about">About</a><a href="#/contact">Contact</a></header>
+<main>
+<div id="page-about" class="spa-page"><section class="hero"><h1>About page heading</h1><p>This route is hidden until a script activates it, so it must stay hidden in the copy as well.</p></section></div>
+<div id="page-home" class="spa-page"><section class="hero"><h1>Home page heading</h1><p>The first screen of the site, shown by the router when the page loads with no hash in the address.</p><a href="#/about">Learn more</a></section><section class="block"><h2>Home second block</h2><p>More home content that should come out as its own part of the copy.</p></section></div>
+<div id="page-contact" class="spa-page"><section class="hero"><h1>Contact page heading</h1><p>Another hidden route with words in it so that it looks like real content.</p></section></div>
+</main>
+<footer>© 2026 Spa Co. All rights reserved. <a href="#">Privacy</a> <a href="#">Terms</a></footer>
+<script>document.getElementById('page-home').classList.add('active')</script>
+</body></html>

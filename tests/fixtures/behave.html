@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>behave</title><style>*{box-sizing:border-box}body{margin:0;font:16px/1.5 Arial,sans-serif;color:#222}
+header.site-header{position:fixed;top:0;left:0;right:0;height:64px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:20}
+.nav-menu{display:none;position:absolute;top:64px;left:0;right:0;background:#fff;padding:10px 20px}.nav-menu a{display:block;padding:8px 0}.menu-button{width:44px;height:44px;border:1px solid #999;background:#fff}
+@media(min-width:900px){.nav-menu{display:block;position:static;padding:0}.nav-menu a{display:inline-block;margin-left:16px}.menu-button{display:none}}
+main{padding-top:64px}section{padding:50px 20px}.faq-item{border-bottom:1px solid #ddd}.faq-q{padding:12px 0;cursor:pointer;font-weight:700}.faq-a{display:none;padding-bottom:12px}
+.tabs-menu{display:flex;gap:8px}.tab-link{padding:8px 12px;border:1px solid #bbb;cursor:pointer}.tab-pane{display:none;padding:12px}
+.slider{position:relative;width:100%}.slider-mask{width:100%}.slide{height:160px;background:#cde;padding:20px;font-size:28px}
+.gallery img{width:90px;height:90px;object-fit:cover;margin:4px}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;padding:60px 20px}.modal .box{background:#fff;padding:24px;max-width:400px;margin:auto}
+.reveal{margin-top:900px;padding:30px;background:#efe}form input{display:block;margin:6px 0;padding:8px;width:100%}</style></head><body>
+<header class="site-header"><b>Behave Co</b><button class="menu-button" aria-label="Open menu">☰</button><nav class="nav-menu"><a href="#faq">FAQ</a><a href="#tabs">Tabs</a><a href="#contact">Contact</a></nav></header>
+<main>
+<section id="faq"><h2>FAQ</h2><div class="faq-list"><div class="faq-item"><div class="faq-q">Is there a trial?</div><div class="faq-a">Yes, thirty days.</div></div><div class="faq-item"><div class="faq-q">Can I cancel?</div><div class="faq-a">Any time.</div></div></div></section>
+<section id="tabs"><h2>Plans</h2><div class="w-tabs"><div class="tabs-menu"><a class="tab-link">Basic</a><a class="tab-link">Pro</a></div><div class="tabs-content"><div class="tab-pane">Basic plan text</div><div class="tab-pane">Pro plan text</div></div></div></section>
+<section><h2>Slides</h2><div class="slider"><div class="slider-mask"><div class="slide">One</div><div class="slide">Two</div><div class="slide">Three</div></div></div></section>
+<section class="gallery"><h2>Gallery</h2><a href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGO4o6GBFTEMLQkAe3tLAfuiUfAAAAAASUVORK5CYII="><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGO4o6GBFTEMLQkAe3tLAfuiUfAAAAAASUVORK5CYII=" alt="p1"></a><a href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGO4o6GBFTEMLQkAe3tLAfuiUfAAAAAASUVORK5CYII="><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGO4o6GBFTEMLQkAe3tLAfuiUfAAAAAASUVORK5CYII=" alt="p2"></a></section>
+<section><a href="#hello-modal" id="open-modal">Say hello</a><div class="modal" id="hello-modal"><div class="box">Hello from the modal <button class="close">Close</button></div></div></section>
+<section id="contact"><h2>Contact</h2><form action="#"><input type="text" name="name" placeholder="Name" required><input type="email" name="email" placeholder="Email" required><button type="submit">Send</button></form></section>
+<section class="reveal" data-aos="fade-up">I fade in when scrolled to</section>
+<footer style="padding:40px;background:#eee">© 2026 Behave Co. All rights reserved. <a href="#">Privacy</a> <a href="#">Terms</a></footer>
+</main></body></html>
